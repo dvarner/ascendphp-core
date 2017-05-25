@@ -1,0 +1,22 @@
+{
+  "name": "dvarner/ascendphp-core",
+  "description": "Ascend is a PHP Framework. These are its core files.",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "David Varner",
+      "email": "info@ascendphp.com"
+    }
+  ],
+  "minimum-stability": "dev",
+  "require": {
+    "php": ">=5.2.0",
+    "nesbot/carbon": "^1.21",
+    "filp/whoops": "1.*"
+  },
+    "autoload": {
+        "psr-0": {
+            "Acend": "src/"
+        }
+    }
+}
