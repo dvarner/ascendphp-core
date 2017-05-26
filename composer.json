@@ -16,7 +16,7 @@
   },
     "autoload": {
         "psr-0": {
-            "Ascend": "src/"
+            "Ascend": "src/",
             "Ascend\\Feature": "src/features",
             "Ascend\\CommandLine": "src/commandline"
         }
