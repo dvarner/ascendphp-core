@@ -44,9 +44,9 @@ class BootStrap
             exit;
         }
     }
-
     public static function autoloader()
     {
+        /*
         spl_autoload_register(function ($name) {
 
             $DS = DIRECTORY_SEPARATOR;
@@ -89,6 +89,7 @@ class BootStrap
 
             // throw new Exception("Unable to load $name.");
         });
+        */
     }
 
     /**
