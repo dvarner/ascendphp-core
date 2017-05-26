@@ -15,7 +15,7 @@
     "filp/whoops": "1.*"
   },
     "autoload": {
-        "psr-0": {
+        "psr-4": {
             "Ascend": "src/"
         }
     }
