@@ -99,7 +99,7 @@ class BootStrap
         if (count(static::$_config) == 0) {
 
             /** Gets master configurations. */
-            $path_config = __DIR__ . '/../app/config.php';
+            $path_config = __DIR__ . '/../../../../../app/config.php';
             if (file_exists($path_config)) {
                 require_once $path_config;
             } else {
