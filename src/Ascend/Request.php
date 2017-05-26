@@ -57,7 +57,7 @@ class Request
 	 public static function getRequestUriParsed() {
 		$uri = $_SERVER['REQUEST_URI'];
 		
-		if (substr($uri, -1, 1) == '/') {
+		if ($uri != '/' && substr($uri, -1, 1) == '/') {
 			$uri = substr($uri, 0, -1);
 		}
 		
