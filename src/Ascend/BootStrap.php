@@ -31,9 +31,9 @@ class BootStrap
 		*/
 
         if (self::existConfig('db')) {
-            require_once PATH_FRAMEWORK . 'DatabasePDO.php';
-            require_once PATH_FRAMEWORK . 'Database.php';
-            require_once PATH_FRAMEWORK . 'Model.php';
+            require_once PATH_PROJECT . 'vendor/dvarner/ascendphp-core/src/Ascend/DatabasePDO.php';
+            require_once PATH_PROJECT . 'vendor/dvarner/ascendphp-core/src/Ascend/Database.php';
+            require_once PATH_PROJECT . 'vendor/dvarner/ascendphp-core/src/Ascend/Model.php';
             self::initDBPDO();
             self::initDB();
         }
@@ -112,7 +112,7 @@ class BootStrap
 
             $_config['domain_full'] = ($_config['https'] === true ? 'https' : 'http') . '://www.' . $_config['domain'];
 
-            if (is_array($_config['debug'])) {
+            if (is_array($_config['debug']) || $_config['debug'] === true) {
                 $_config['debug']['basic'] = true;
                 if (!isset($_config['debug']['script_runtime'])) {
                     $_config['debug']['script_runtime'] = false;
