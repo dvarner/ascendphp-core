@@ -113,6 +113,7 @@ class BootStrap
             $_config['domain_full'] = ($_config['https'] === true ? 'https' : 'http') . '://www.' . $_config['domain'];
 
             if (is_array($_config['debug']) || $_config['debug'] === true) {
+                unset($_config['debug']);
                 $_config['debug']['basic'] = true;
                 if (!isset($_config['debug']['script_runtime'])) {
                     $_config['debug']['script_runtime'] = false;
