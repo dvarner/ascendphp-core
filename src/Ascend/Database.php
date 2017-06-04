@@ -188,7 +188,19 @@ class Database
 
         return true;
     }
+    
+    public function orderBy($id, $by = 'asc') {
+        // die('orderBy Incomplete!');
 
+        if(!isset($this->orderby)){ $this->orderby = ''; }
+
+        $sql = ($this->orderby != '' ? ',' : ' ORDER BY ');
+        $sql.= '' .
+                $id . ' ' . ($by == 'asc' ? 'asc' : 'desc');
+        $this->orderby.= $sql;
+        return $this;
+    }
+    
     public function getLastSQL()
     {
         echo '<pre>';
@@ -265,19 +277,6 @@ class Database
 
     public function whereExist() {
         die('whereExist Incomplete!');
-    }
-
-    public function orderBy($table, $id, $by = 'asc') {
-        // die('orderBy Incomplete!');
-
-        if(!isset($this->orderby)){ $this->orderby = ''; }
-
-        $sql = ($this->orderby != '' ? ',' : ' ORDER BY ');
-        $sql.= '' .
-                ($table != '' ? $this->getPre() . $table . '.' : '') .
-                $id . ' ' . ($by == 'asc' ? 'asc' : 'desc');
-        $this->orderby.= $sql;
-        return $this;
     }
 
     public function groupBy($field, $id) {
