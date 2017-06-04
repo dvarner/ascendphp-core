@@ -63,9 +63,9 @@ class Model
         }
 
         if (isset($this->timestamps)) {
-            $fields['created_at'] = 'created_at timestamp not null';
-            $fields['updated_at'] = 'updated_at timestamp not null';
-            $fields['deleted_at'] = 'deleted_at timestamp not null';
+            $fields['created_at'] = 'created_at timestamp null default null';
+            $fields['updated_at'] = 'updated_at timestamp null default null';
+            $fields['deleted_at'] = 'deleted_at timestamp null default null';
         }
         /*
         use SoftDeletes; <--- find this in model

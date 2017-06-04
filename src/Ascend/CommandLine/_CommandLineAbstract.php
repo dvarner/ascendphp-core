@@ -1,6 +1,9 @@
 <?php namespace Ascend\CommandLine;
 
-require PATH_COMMANDLINE . '_CommandLineColor.php';
+$DS = DIRECTORY_SEPARATOR;
+$PCmd = PATH_PROJECT . 'vendor'.$DS.'dvarner'.$DS.'ascendphp-core'.$DS.'src'.$DS.'Ascend'.$DS.'CommandLine'.$DS;
+
+require $PCmd . '_CommandLineColor.php';
 use Ascend\CommandLine\CommandLineColor;
 
 /**

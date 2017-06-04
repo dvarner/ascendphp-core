@@ -29,17 +29,19 @@ class BootStrap
 		$whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
 		$whoops->register();
 		*/
+        
+        $DS = DIRECTORY_SEPARATOR;
 
         if (self::existConfig('db')) {
-            require_once PATH_PROJECT . 'vendor/dvarner/ascendphp-core/src/Ascend/DatabasePDO.php';
-            require_once PATH_PROJECT . 'vendor/dvarner/ascendphp-core/src/Ascend/Database.php';
-            require_once PATH_PROJECT . 'vendor/dvarner/ascendphp-core/src/Ascend/Model.php';
+            require_once PATH_PROJECT . 'vendor'.$DS.'dvarner'.$DS.'ascendphp-core'.$DS.'src'.$DS.'Ascend'.$DS.'DatabasePDO.php';
+            require_once PATH_PROJECT . 'vendor'.$DS.'dvarner'.$DS.'ascendphp-core'.$DS.'src'.$DS.'Ascend'.$DS.'Database.php';
+            require_once PATH_PROJECT . 'vendor'.$DS.'dvarner'.$DS.'ascendphp-core'.$DS.'src'.$DS.'Ascend'.$DS.'Model.php';
             self::initDBPDO();
             self::initDB();
         }
 
         if (self::isCommandLine()) {
-            require_once PATH_FRAMEWORK . 'CommandLine.php';
+            require_once PATH_PROJECT . 'vendor'.$DS.'dvarner'.$DS.'ascendphp-core'.$DS.'src'.$DS.'Ascend'.$DS.'CommandLine.php';
             CommandLine::init();
             exit;
         }
