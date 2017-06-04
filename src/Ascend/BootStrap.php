@@ -29,26 +29,26 @@ class BootStrap
 		$whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
 		$whoops->register();
 		*/
+        
+        $DS = DIRECTORY_SEPARATOR;
 
         if (self::existConfig('db')) {
-            require_once PATH_PROJECT . 'vendor/dvarner/ascendphp-core/src/Ascend/DatabasePDO.php';
-            require_once PATH_PROJECT . 'vendor/dvarner/ascendphp-core/src/Ascend/Database.php';
-            require_once PATH_PROJECT . 'vendor/dvarner/ascendphp-core/src/Ascend/Model.php';
+            require_once PATH_PROJECT . 'vendor'.$DS.'dvarner'.$DS.'ascendphp-core'.$DS.'src'.$DS.'Ascend'.$DS.'DatabasePDO.php';
+            require_once PATH_PROJECT . 'vendor'.$DS.'dvarner'.$DS.'ascendphp-core'.$DS.'src'.$DS.'Ascend'.$DS.'Database.php';
+            require_once PATH_PROJECT . 'vendor'.$DS.'dvarner'.$DS.'ascendphp-core'.$DS.'src'.$DS.'Ascend'.$DS.'Model.php';
             self::initDBPDO();
             self::initDB();
         }
 
         if (self::isCommandLine()) {
-            require_once PATH_FRAMEWORK . 'CommandLine.php';
+            require_once PATH_PROJECT . 'vendor'.$DS.'dvarner'.$DS.'ascendphp-core'.$DS.'src'.$DS.'Ascend'.$DS.'CommandLine.php';
             CommandLine::init();
             exit;
         }
     }
     public static function autoloader()
     {
-        /*
         spl_autoload_register(function ($name) {
-
             $DS = DIRECTORY_SEPARATOR;
 
             // Change namespace forward slashes to backward slashes for windows
@@ -60,8 +60,8 @@ class BootStrap
                 'App' . $DS . 'CommandLine' . $DS => 'app' . $DS . 'commandline' . $DS,
                 'App' . $DS . 'Controller' . $DS => 'app' . $DS . 'controllers' . $DS,
                 'App' . $DS . 'Model' . $DS => 'app' . $DS . 'models' . $DS,
-                'Ascend' . $DS . 'Feature' . $DS => 'fw' . $DS . 'features' . $DS,
-                'Ascend' . $DS => 'fw' . $DS,
+                // 'Ascend' . $DS . 'Feature' . $DS => 'fw' . $DS . 'features' . $DS,
+                // 'Ascend' . $DS => 'fw' . $DS,
             );
 
             $find = array_keys($replacements);
@@ -71,25 +71,24 @@ class BootStrap
 
             if (file_exists(PATH_PROJECT . $path . '.php')) {
                 require_once PATH_PROJECT . $path . '.php';
-            } else {
+            // } else {
 
-                $path = str_replace('fw' . $DS, 'fw' . $DS . 'feature' . $DS, $path);
+                // $path = str_replace('fw' . $DS, 'fw' . $DS . 'feature' . $DS, $path);
 
-                if (file_exists(PATH_PROJECT . $path . '.php')) {
-                    // echo PATH_PROJECT . $path . '.php' . RET;
-                    require_once PATH_PROJECT . $path . '.php';
-                } else {
-                    echo '<pre>';
-                    echo 'Name: ' . $name . RET;
-                    echo 'Count not find "' . PATH_PROJECT . $path . '.php"' . RET;
-                    var_dump(debug_backtrace());
-                    exit;
-                }
+                // if (file_exists(PATH_PROJECT . $path . '.php')) {
+                    // // echo PATH_PROJECT . $path . '.php' . RET;
+                    // require_once PATH_PROJECT . $path . '.php';
+                // } else {
+                    // echo '<pre>';
+                    // echo 'Name: ' . $name . RET;
+                    // echo 'Count not find "' . PATH_PROJECT . $path . '.php"' . RET;
+                    // var_dump(debug_backtrace());
+                    // exit;
+                // }
             }
 
             // throw new Exception("Unable to load $name.");
         });
-        */
     }
 
     /**

@@ -37,6 +37,10 @@ class Request
 	public function input($variable) {
 		return isset($_REQUEST[$variable]) ? $_REQUEST[$variable] : null;
 	}
+    
+    public function get($variable) {
+        return $this->input($variable);
+    }
 	
 	private function sanitize($arr) {
 		$clean = array();

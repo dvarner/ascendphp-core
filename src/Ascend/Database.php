@@ -89,7 +89,7 @@ class Database
                 $this->db->bind($v[0], $v[1]);
                 unset($v);
             }
-            unset($this->bindStore);
+            unset($this->bindStore, $this->inc);
         }
     }
 
@@ -127,18 +127,34 @@ class Database
         return $insert_id;
     }
 
-    public function where($table, $id, $expression, $value)
+    public function where($table, $id, $expression, $value = null)
     {
-        $this->table = $table;
-        $this->inc = (isset($this->inc) ? $this->inc + 1 : 1);
-        if ($expression == 'is' && $value == 'null') {
-            $this->where[] = $table . '.' . $id . ' is null';
-        } elseif ($expression == 'is' && $value == 'not null') {
-            $this->where[] = $table . '.' . $id . ' is not null';
+        if (!is_null($value)) {
+            $this->table = $table;
+            $this->inc = (isset($this->inc) ? $this->inc + 1 : 1);
+            if ($expression == 'is' && $value == 'null') {
+                $this->where[] = $table . '.' . $id . ' is null';
+            } elseif ($expression == 'is' && $value == 'not null') {
+                $this->where[] = $table . '.' . $id . ' is not null';
+            } else {
+                $this->where[] = $table . '.' . $id . ' ' . $expression . ' :' . $this->inc;
+                $this->bindStore[] = array(':' . $this->inc, $value);
+            }
         } else {
-            $this->where[] = $table . '.' . $id . ' ' . $expression . ' :' . $this->inc;
-            $this->bindStore[] = array(':' . $this->inc, $value);
+            $value = $expression;
+            $expression = $id;
+            $id = $table;
+            $this->inc = (isset($this->inc) ? $this->inc + 1 : 1);
+            if ($expression == 'is' && $value == 'null') {
+                $this->where[] = $id . ' is null';
+            } elseif ($expression == 'is' && $value == 'not null') {
+                $this->where[] = $id . ' is not null';
+            } else {
+                $this->where[] = $id . ' ' . $expression . ' :' . $this->inc;
+                $this->bindStore[] = array(':' . $this->inc, $value);
+            }
         }
+            
         return $this;
     }
 
