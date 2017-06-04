@@ -150,7 +150,7 @@ class Route {
 			if (false !== strpos($call, '@')) {
 				
 				list($class, $func) = explode('@', $call);
-				// require_once PATH_CONTROLLERS . $class . '.php';
+				require_once PATH_CONTROLLERS . $class . '.php';
 				if (file_exists(PATH_CONTROLLERS . $class . '.php')) {
 					$classNamespace = 'App' . '\\' . 'Controller' . '\\' . $class;
 				} else {

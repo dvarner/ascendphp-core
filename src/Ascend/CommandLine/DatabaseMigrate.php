@@ -174,7 +174,7 @@ class DatabaseMigrate extends _CommandLineAbstract
 
     private function getModel($model)
     {
-        $sql = "SELECT * FROM migrations WHERE model = '{$model}' LIMIT 1";
+        $sql = "SELECT * FROM migrations WHERE model = '{$model}' ORDER BY id DESC LIMIT 1";
 
         $db = BS::getDBPDO();
         $db->query($sql);

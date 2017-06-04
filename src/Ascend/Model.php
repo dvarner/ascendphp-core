@@ -63,9 +63,9 @@ class Model
         }
 
         if (isset($this->timestamps)) {
-            $fields['created_at'] = 'created_at timestamp not null';
-            $fields['updated_at'] = 'updated_at timestamp not null';
-            $fields['deleted_at'] = 'deleted_at timestamp not null';
+            $fields['created_at'] = 'created_at timestamp null default null';
+            $fields['updated_at'] = 'updated_at timestamp null default null';
+            $fields['deleted_at'] = 'deleted_at timestamp null default null';
         }
         /*
         use SoftDeletes; <--- find this in model
@@ -103,6 +103,7 @@ class Model
 
         // @todo Switch DB::tables to [model]
         if (!isset($fields['id'])) {
+            $fields['created_at'] = date('Y-m-d H:i:s', time());
             $insertId = BS::getDB()->insert($modelName, $fields);
             $id = $insertId;
             /*
@@ -115,6 +116,7 @@ class Model
             $wheres['id'] = $fields['id'];
             $id = $fields['id'];
             unset($fields['id']);
+            $fields['updated_at'] = date('Y-m-d H:i:s', time());
             BS::getDB()->update($modelName, $fields, $wheres);
             // BS::getDB() // @todo update above to this
         }

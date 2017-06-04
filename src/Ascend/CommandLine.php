@@ -9,6 +9,8 @@ class CommandLine
 	
     public static function init()
     {
+        $DS = DIRECTORY_SEPARATOR;
+        $PCmd = PATH_PROJECT . 'vendor'.$DS.'dvarner'.$DS.'ascendphp-core'.$DS.'src'.$DS.'Ascend'.$DS.'CommandLine'.$DS;
 		$argv = CommandLineArguments::getArgv();
 		$cmd = isset($argv[1]) ? $argv[1] : null;
 		// 2+ arguments.... figure out later
@@ -18,10 +20,10 @@ class CommandLine
 		$output.= 'Help! Command not found!.' . RET;
 		$output.= 'Here is a list of commands available:' . RET;
 
-		require_once PATH_COMMANDLINE . '_CommandLineAbstract.php';
+		require_once $PCmd . '_CommandLineAbstract.php';
 
 		// Get Framework specific Command lines
-		$path = PATH_COMMANDLINE;
+		$path = $PCmd;
 		$cdir = scandir($path); 
 		foreach ($cdir as $key => $value) { 
 			if (!in_array($value, array(".", ".."))) { 
@@ -30,6 +32,11 @@ class CommandLine
 					&&
 					'_' != substr($value, 0, 1)
 				) { 
+                echo 'A'.RET;
+                echo $cmd.RET;
+                echo $path.RET;
+                echo $value.RET;
+                echo RET;
 					$output.= self::getEachModel($cmd, $path, $value);
 				}
 			} 
@@ -45,6 +52,11 @@ class CommandLine
                     &&
                     '_' != substr($value, 0, 1)
                 ) {
+                echo 'B'.RET;
+                echo $cmd.RET;
+                echo $path.RET;
+                echo $value.RET;
+                echo RET;
                     $output.= self::getEachModel($cmd, $path, $value);
                 }
             }
@@ -61,7 +73,11 @@ class CommandLine
 		require_once $path . $value;
 		
 		$className = str_replace('.php', '', $value);
-		$className = '\\' . 'Ascend' . '\\' . 'CommandLine' . '\\' . $className;
+        if (false !== strpos($path,'vendor')) {
+            $className = '\\' . 'Ascend' . '\\' . 'CommandLine' . '\\' . $className;
+        } else {
+            $className = '\\' . 'App' . '\\' . 'CommandLine' . '\\' . $className;
+        }
 		
 		$n = new $className;
 		
