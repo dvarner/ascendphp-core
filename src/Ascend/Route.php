@@ -176,7 +176,7 @@ class Route
                 list($class, $func) = explode('@', $call);
                 require_once PATH_CONTROLLERS . $class . '.php';
                 if (file_exists(PATH_CONTROLLERS . $class . '.php')) {
-                    $classNamespace = 'App' . '\\' . 'Controller' . '\\' . $class;
+                    $classNamespace = 'App\\Controller\\' . $class;
                 } else {
                     die($class . ' failed to load within Route::getControllerByUri()');
                     /** REMOVED: Dont want controllers in features or fw which are stuck the way they are. Give devs power to change.
@@ -213,10 +213,13 @@ class Route
                     } else if ($c >= 1) {
                         $inst = array();
                         foreach ($method->getParameters() as $num => $parameter) {
-                            $defClassName = $parameter->getType();
-                            $defVariable = $parameter->getName();
-                            if (is_object($defClassName)) {
-                                $nam = '\\' . $defClassName;
+                            // var_dump($classNamespace, $method, $parameter); exit;
+                            // $defClassName = $parameter->getType(); // only a PHP 7+ thing...
+                            // $defClassName = $parameter->getClass();
+                            // $defVariable = $parameter->getName();
+                            // echo 'Ascend\Route.php > 220<br />'.PHP_EOL;
+                            if (isset($parameter->getClass()->name)) {
+                                $nam = '\\' . $parameter->getClass()->name;
                                 $inst[] = new $nam;
                             } else {
                                 $inst[] = $parameter;

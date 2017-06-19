@@ -32,11 +32,13 @@ class CommandLine
 					&&
 					'_' != substr($value, 0, 1)
 				) { 
+                /*
                 echo 'A'.RET;
                 echo $cmd.RET;
                 echo $path.RET;
                 echo $value.RET;
                 echo RET;
+                */
 					$output.= self::getEachModel($cmd, $path, $value);
 				}
 			} 

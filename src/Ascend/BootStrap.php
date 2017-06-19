@@ -55,7 +55,7 @@ class BootStrap
             $name = str_replace('\\', '/', $name);
 
             $path = $name;
-
+            /*
             $replacements = array(
                 'App' . $DS . 'CommandLine' . $DS => 'app' . $DS . 'commandline' . $DS,
                 'App' . $DS . 'Controller' . $DS => 'app' . $DS . 'controllers' . $DS,
@@ -68,7 +68,10 @@ class BootStrap
             $replace = array_values($replacements);
 
             $path = str_replace($find, $replace, $path);
+            */
 
+            // echo ' ## Ascend/Boostrap.php > 73<br />'.PHP_EOL;
+            // echo PATH_PROJECT . $path . '.php'.'<br />'.PHP_EOL;
             if (file_exists(PATH_PROJECT . $path . '.php')) {
                 require_once PATH_PROJECT . $path . '.php';
             // } else {
@@ -99,7 +102,7 @@ class BootStrap
         if (count(static::$_config) == 0) {
 
             /** Gets master configurations. */
-            $path_config = __DIR__ . '/../../../../../app/config.php';
+            $path_config = __DIR__ . '/../../../../../App/config.php';
             if (file_exists($path_config)) {
                 require_once $path_config;
             } else {
