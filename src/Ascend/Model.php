@@ -140,8 +140,8 @@ class Model
         $modelNameSingular = strtolower($e[count($e) - 1]);
         $modelName = $modelNameSingular . 's';
 
-        BS::getDB()->delete($modelName, $id);
-        // BS::getDB() // @todo update above to this
+        BS::getDB()->deleteSoft($modelName, $id);
+        // BS::getDB() // @todo update above to softDelete
 
         return true;
     }
@@ -187,7 +187,7 @@ class Model
         // @todo Find a way to use Database class
         $table = self::getTableName();
 
-        $sql = "SELECT * FROM {$table}";
+        $sql = "SELECT * FROM {$table} WHERE deleted_at IS NULL";
 
         /*
         $request = new Request;

@@ -174,7 +174,7 @@ class Database
             $sqlw .= ($sqlw == '' ? '' : ' && ') . $k . ' = :' . $k;
         }
         $sql .= " WHERE " . $sqlw;
-        // dd($sql,$update, $where); exit;
+        // var_dump($sql,$update, $where); exit;
         $this->db->query($sql);
 
         // *** Bind fields/values to query
@@ -186,8 +186,11 @@ class Database
             $this->db->bind(':' . $name, $value);
             unset($name, $value);
         }
+        
+        // echo $this->interpolateQuery($sql, array_merge($update, $where));exit;
 
         $this->db->execute();
+        // $this->db->debugDumpParams();
     }
 
     public function delete($table, $id)
@@ -204,6 +207,14 @@ class Database
 
         return true;
     }
+    
+    public function deleteSoft($table, $id) {
+        $this->table = $table;
+        $update['deleted_at'] = \Carbon\Carbon::now();
+        $where['id'] = $id;
+        $this->update($table, $update, $where);
+    }
+
     
     public function orderBy($id, $by = 'asc') {
         // die('orderBy Incomplete!');
@@ -222,13 +233,32 @@ class Database
         echo '<pre>';
         var_dump($this->lastSQL);
     }
-    /*
-    public function deleteSoft($table, $id) {
-        $this->table = $table;
-        $update['deleted_at'] = \Carbon\Carbon::now();
-        $where['id'] = $id;
-        $this->update($table, $update, $where);
+    public function interpolateQuery($query, $params) {
+    $keys = array();
+    $values = $params;
+
+    # build a regular expression for each parameter
+    foreach ($params as $key => $value) {
+        if (is_string($key)) {
+            $keys[] = '/:'.$key.'/';
+        } else {
+            $keys[] = '/[?]/';
+        }
+
+        if (is_string($value))
+            $values[$key] = "'" . $value . "'";
+
+        if (is_array($value))
+            $values[$key] = "'" . implode("','", $value) . "'";
+
+        if (is_null($value))
+            $values[$key] = 'NULL';
     }
+
+    $query = preg_replace($keys, $values, $query);
+
+    return $query;
+}
     /*
     public function tableExists($table){
         // @todo -user:dvarner -date:12/9/2015 Need to update table to use $this->getPre()
