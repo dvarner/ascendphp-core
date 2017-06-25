@@ -40,7 +40,7 @@ class BaseController
     }
 
     // get = index
-    public function get()
+    public function methodGet()
     { // Request $request) {
         $this->isModelSet();
         Permission::get('user', 'get');
@@ -65,10 +65,10 @@ class BaseController
     }
 
     // post = store
-    public function post()
+    public function methodPost($injectedVariables = [])
     {
         $this->isModelSet();
-        Permission::get('user', 'post');
+        Permission::get('user', 'post'); // @todo change to be dynamic; all of them in this file...
 
         // POST /api/photos
 
@@ -80,6 +80,12 @@ class BaseController
         $r = new Request;
         $r->setMethod = 'POST';
         $a = $r->all();
+
+        // Pass variables through which might be set on backend and not on fe.
+        // Example: user_id set by session or timestamp of action.
+        foreach ($injectedVariables AS $k => $v) {
+            $a[$k] = $v;
+        }
 
         if (is_array($a) && count($a) > 0) {
             foreach ($a AS $k => $v) {
@@ -98,7 +104,7 @@ class BaseController
     }
 
     // getOne = show
-    public function getOne($id)
+    public function methodGetOne($id)
     {
         $this->isModelSet();
         Permission::get('user', 'get');
@@ -124,7 +130,7 @@ class BaseController
     }
 
     // put = update
-    public function put($id)
+    public function methodPut($id)
     {
         $this->isModelSet();
         Permission::get('user', 'put');
@@ -157,7 +163,7 @@ class BaseController
     }
 
     // delete = destroy
-    public function delete($id)
+    public function methodDelete($id)
     {
         $this->isModelSet();
         Permission::get('user', 'delete');

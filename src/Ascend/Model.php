@@ -89,8 +89,8 @@ class Model
 
         $modelNamespace = '\\' . get_called_class();
         $e = explode('\\', $modelNamespace);
-        $modelNameSingular = strtolower($e[count($e) - 1]);
-        $modelName = $modelNameSingular . 's';
+        $modelName = strtolower($e[count($e) - 1]);
+        $tableName = $this->getTable();
 
         $allowed = array_merge($this->fillable, $this->guarded, array('id'));
 
@@ -104,7 +104,7 @@ class Model
         // @todo Switch DB::tables to [model]
         if (!isset($fields['id'])) {
             $fields['created_at'] = date('Y-m-d H:i:s', time());
-            $insertId = BS::getDB()->insert($modelName, $fields);
+            $insertId = BS::getDB()->insert($tableName, $fields);
             $id = $insertId;
             /*
             $redirectUri = '/' . $modelNameSingular . '/' . $id . '/edit';
@@ -112,7 +112,7 @@ class Model
             exit;
             */
         } else {
-            $exist = Database::table($modelName)->where($modelName, 'id', '=', $fields['id'])->first();
+            $exist = Database::table($tableName)->where($tableName, 'id', '=', $fields['id'])->first();
             $wheres['id'] = $fields['id'];
             $id = $fields['id'];
             unset($fields['id']);
@@ -137,10 +137,10 @@ class Model
 
         $modelNamespace = '\\' . get_called_class();
         $e = explode('\\', $modelNamespace);
-        $modelNameSingular = strtolower($e[count($e) - 1]);
-        $modelName = $modelNameSingular . 's';
+        $modelName = strtolower($e[count($e) - 1]);
+        $tableName = $this->getTable();
 
-        BS::getDB()->deleteSoft($modelName, $id);
+        BS::getDB()->deleteSoft($tableName, $id);
         // BS::getDB() // @todo update above to softDelete
 
         return true;
@@ -175,7 +175,7 @@ class Model
 
     public static function getTableName()
     {
-        // @todo eventually store this in config to reuse; make a singleton ...
+        // This function is required for static functions to work
         $model = get_called_class();
         // echo 'model: '.$model.'<br />';
         $n = new $model;
@@ -184,7 +184,6 @@ class Model
 
     public static function all()
     {
-        // @todo Find a way to use Database class
         $table = self::getTableName();
 
         $sql = "SELECT * FROM {$table} WHERE deleted_at IS NULL";
@@ -222,23 +221,14 @@ class Model
         $table = self::getTableName();
         self::$dbStatic = new Database;
         self::$dbStatic->table = $table;
-        self::$dbStatic->where[] = $first . ' ' . $expression . " '{$second}'";
-        return self::$dbStatic;
-
-        /*
-        $this->inc = (isset($this->inc) ? $this->inc + 1 : 1);
-        if($expression == 'is' && $value == 'null'){
-            $this->where[] = $table . '.' . $id . ' is null';
-        }elseif($expression == 'is' && $value == 'not null'){
-            $this->where[] = $table . '.' . $id . ' is not null';
-        }else{
-            $this->where[] = $table . '.' . $id . ' ' . $expression . ' :' . $this->inc;
-            $this->bindStore[] = array(':' . $this->inc, $value);
+        if (strtolower($expression) == 'null') {
+            self::$dbStatic->where[] = $first . ' IS NULL';
+        }elseif (strtolower($expression) == 'not null') {
+            self::$dbStatic->where[] = $first . ' IS NOT NULL';
+        } else {
+            self::$dbStatic->where[] = $first . ' ' . $expression . " '{$second}'";
         }
-        return $this;
-
-        return $db;
-        */
+        return self::$dbStatic;
     }
 
     /*
@@ -253,7 +243,7 @@ class Model
     public function getValidations() {
         return $this->validations;
     }
-    
+
     public function getSeeder() {
         if(isset($this->seeder)) {
             return $this->seeder;

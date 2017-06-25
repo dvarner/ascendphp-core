@@ -1,6 +1,8 @@
 <?php namespace Ascend\Feature;
 
 use Ascend\Bootstrap as BS;
+use App\Model\Permission as ModelPermission;
+use App\Model\RolePermission;
 
 class Permission
 {
@@ -22,25 +24,25 @@ class Permission
         if (Session::exist('user.id')) {
 
             $userId = Session::get('user.id');
-
+            
             $sql = "
-				SELECT rp.method_get, rp.method_post, rp.method_put, rp.method_delete
-				FROM permissions p
-				JOIN rolepermissions rp ON rp.permission_id = p.id
-				JOIN users u ON u.role_id = rp.role_id
-				WHERE p.slug = '{$slug}'
-				AND u.id = '{$userId}'
-			";
+                SELECT rp.method_get, rp.method_post, rp.method_put, rp.method_delete
+                FROM " . ModelPermission::getTableName() . " p
+                JOIN " . RolePermission::getTableName() . " rp ON rp.permission_id = p.id
+                JOIN users u ON u.role_id = rp.role_id
+                WHERE p.slug = '{$slug}'
+                AND u.id = '{$userId}'
+            ";
         } else {
             $roleId = BS::getConfig('role.default');
 
             $sql = "
-				SELECT rp.method_get, rp.method_post, rp.method_put, rp.method_delete
-				FROM permissions p
-				JOIN rolepermissions rp ON rp.permission_id = p.id
-				WHERE p.slug = '{$slug}'
-				AND rp.id = '{$roleId}'
-			";
+                SELECT rp.method_get, rp.method_post, rp.method_put, rp.method_delete
+                FROM " . ModelPermission::getTableName() . " p
+                JOIN " . RolePermission::getTableName() . " rp ON rp.permission_id = p.id
+                WHERE p.slug = '{$slug}'
+                AND rp.id = '{$roleId}'
+            ";
         }
 
         $db = BS::getDBPDO();

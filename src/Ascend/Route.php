@@ -8,7 +8,6 @@ use Ascend\Request;
  */
 class Route
 {
-
     public static function get($path, $call)
     {
 
@@ -60,13 +59,13 @@ class Route
     public static function rest($path, $call)
     {
         self::get('/' . $path, $call . '@viewList');    // Show html page for listing results
-        self::get('/api/' . $path, $call . '@get');        // Get a json result of all
+        self::get('/api/' . $path, $call . '@methodGet');        // Get a json result of all
         self::get('/' . $path . '/create', $call . '@viewCreate'); // Get html form for create
-        self::post('/api/' . $path, $call . '@post');        // Insert a record(s)
-        self::get('/api/' . $path . '/{id}', $call . '@getOne');        // Get single result back in json
+        self::post('/api/' . $path, $call . '@methodPost');        // Insert a record(s)
+        self::get('/api/' . $path . '/{id}', $call . '@methodGetOne');        // Get single result back in json
         self::get('/' . $path . '/{id}/edit', $call . '@viewEdit');    // Show html form for editing
-        self::put('/api/' . $path . '/{id}', $call . '@put');        // Update call results json
-        self::delete('/api/' . $path . '/{id}', $call . '@delete');        // Delete call results json
+        self::put('/api/' . $path . '/{id}', $call . '@methodPut');        // Update call results json
+        self::delete('/api/' . $path . '/{id}', $call . '@methodDelete');        // Delete call results json
     }
 
     public static function view($uri, $path)
