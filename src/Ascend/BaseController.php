@@ -7,10 +7,15 @@ use Ascend\Feature\Permission;
 class BaseController
 {
     protected $model = null;
+    protected $pathSub = '';
 
     protected function setModel($model)
     {
         $this->model = strtolower($model);
+    }
+    
+    protected function setPathSub($pathSub){
+        $this->pathSub = $pathSub;
     }
 
     protected function isModelSet()
@@ -29,21 +34,21 @@ class BaseController
     public function viewList()
     {
         $this->isModelSet();
-        Permission::get('user', 'get');
+        Permission::get($this->model, 'get');
 
         // GET /photos
 
         // Two different ways; send data below or ajax on page; ajax is on page.
         $r = new Request;
         // $a[$this->model . 's'] = $this->index($r);
-        return Route::getView($this->model . '/index'); // , $a);
+        return Route::getView($this->pathSub . $this->model . '/index'); // , $a);
     }
 
     // get = index
     public function methodGet()
     { // Request $request) {
         $this->isModelSet();
-        Permission::get('user', 'get');
+        Permission::get($this->model, 'get');
 
         // GET /api/photos
 
@@ -57,18 +62,18 @@ class BaseController
     public function viewCreate()
     {
         $this->isModelSet();
-        Permission::get('user', 'post');
+        Permission::get($this->model, 'post');
 
         // GET photos/create
 
-        return Route::getView($this->model . '/create');
+        return Route::getView($this->pathSub . $this->model . '/create');
     }
 
     // post = store
-    public function methodPost($injectedVariables = [])
+    public function methodPost()//$injectedVariables = [])
     {
         $this->isModelSet();
-        Permission::get('user', 'post'); // @todo change to be dynamic; all of them in this file...
+        Permission::get($this->model, 'post'); // @todo change to be dynamic; all of them in this file...
 
         // POST /api/photos
 
@@ -83,9 +88,12 @@ class BaseController
 
         // Pass variables through which might be set on backend and not on fe.
         // Example: user_id set by session or timestamp of action.
+        // @todo took out causing issues; so need to figure out why it was done and if needed
+        /*
         foreach ($injectedVariables AS $k => $v) {
             $a[$k] = $v;
         }
+        */
 
         if (is_array($a) && count($a) > 0) {
             foreach ($a AS $k => $v) {
@@ -98,7 +106,7 @@ class BaseController
         $id = $model->save();
 
         $data = array();
-        $data['data'] = $this->getOne($id);
+        $data['data'] = $this->methodGetOne($id);
         $data['status'] = 'success';
         return $data;
     }
@@ -107,7 +115,7 @@ class BaseController
     public function methodGetOne($id)
     {
         $this->isModelSet();
-        Permission::get('user', 'get');
+        Permission::get($this->model, 'get');
 
         // GET /api/photos/{id}
 
@@ -121,19 +129,19 @@ class BaseController
     public function viewEdit($id)
     {
         $this->isModelSet();
-        Permission::get('user', 'put');
+        Permission::get($this->model, 'put');
 
         // GET /api/photos/{id}/edit
 
         $a = $this->getOne($id);
-        return Route::getView($this->model . '/edit', $a);
+        return Route::getView($this->pathSub . $this->model . '/edit', $a);
     }
 
     // put = update
     public function methodPut($id)
     {
         $this->isModelSet();
-        Permission::get('user', 'put');
+        Permission::get($this->model, 'put');
 
         // PUT /api/photos/{id}
 
@@ -166,7 +174,7 @@ class BaseController
     public function methodDelete($id)
     {
         $this->isModelSet();
-        Permission::get('user', 'delete');
+        Permission::get($this->model, 'delete');
 
         // DELETE /api/photos/{id}
 
