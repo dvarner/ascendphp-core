@@ -117,7 +117,7 @@ class Model
             $id = $fields['id'];
             unset($fields['id']);
             $fields['updated_at'] = date('Y-m-d H:i:s', time());
-            BS::getDB()->update($modelName, $fields, $wheres);
+            BS::getDB()->update($tableName, $fields, $wheres);
             // BS::getDB() // @todo update above to this
         }
 

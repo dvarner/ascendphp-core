@@ -133,7 +133,7 @@ class BaseController
 
         // GET /api/photos/{id}/edit
 
-        $a = $this->getOne($id);
+        $a = $this->methodGetOne($id);
         return Route::getView($this->pathSub . $this->model . '/edit', $a);
     }
 
@@ -165,7 +165,7 @@ class BaseController
         $id = $model->save();
 
         $data = array();
-        $data['data'] = $this->getOne($id);
+        $data['data'] = $this->methodGetOne($id);
         $data['status'] = 'success';
         return $data;
     }

@@ -80,7 +80,6 @@ class Route
 
     public static function getView($path, $arr = null)
     {
-
         if (substr($path, -4) != '.php') {
             $path .= '.php';
         }
@@ -88,7 +87,6 @@ class Route
         $pathView = PATH_VIEWS . $path;
 
         if (file_exists($pathView)) {
-
             if (is_array($arr)) {
                 extract($arr);
             }
