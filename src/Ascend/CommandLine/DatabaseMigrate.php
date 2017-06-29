@@ -32,7 +32,7 @@ class DatabaseMigrate extends _CommandLineAbstract
             $class = '\\App\\Model\\' . $model;
             $n = new $class;
 
-            $tableName = strtolower($model) . 's';
+            $tableName = $n->getTable();
 
             $migration = self::getModel($model);
 

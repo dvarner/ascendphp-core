@@ -10,24 +10,22 @@ class Route
 {
     public static function get($path, $call)
     {
-
         list($uri, $param, $method) = Request::getRequestUriParsed();
-        list($path, $dynVar, $dynVal) = self::dynamicVariables($path, $uri);
+        list($path, $dynamicVariables) = self::dynamicVariables($path, $uri);
 
         if ($path == $uri && $method == 'GET') {
-            self::getControllerByUri($path, $call, $uri, $dynVar, $dynVal);
+            self::getControllerByUri($path, $call, $uri, $dynamicVariables);
             exit;
         }
     }
 
     public static function post($path, $call)
     {
-
         list($uri, $param, $method) = Request::getRequestUriParsed();
-        list($path, $dynVar, $dynVal) = self::dynamicVariables($path, $uri);
+        list($path, $dynamicVariables) = self::dynamicVariables($path, $uri);
 
         if ($path == $uri && $method == 'POST') {
-            self::getControllerByUri($path, $call, $uri, $dynVar, $dynVal);
+            self::getControllerByUri($path, $call, $uri, $dynamicVariables);
             exit;
         }
     }
@@ -36,10 +34,10 @@ class Route
     {
 
         list($uri, $param, $method) = Request::getRequestUriParsed();
-        list($path, $dynVar, $dynVal) = self::dynamicVariables($path, $uri);
+        list($path, $dynamicVariables) = self::dynamicVariables($path, $uri);
 
         if ($path == $uri && $method == 'PUT') {
-            self::getControllerByUri($path, $call, $uri, $dynVar, $dynVal);
+            self::getControllerByUri($path, $call, $uri, $dynamicVariables);
             exit;
         }
     }
@@ -48,10 +46,10 @@ class Route
     {
 
         list($uri, $param, $method) = Request::getRequestUriParsed();
-        list($path, $dynVar, $dynVal) = self::dynamicVariables($path, $uri);
+        list($path, $dynamicVariables) = self::dynamicVariables($path, $uri);
 
         if ($path == $uri && $method == 'DELETE') {
-            self::getControllerByUri($path, $call, $uri, $dynVar, $dynVal);
+            self::getControllerByUri($path, $call, $uri, $dynamicVariables);
             exit;
         }
     }
@@ -135,13 +133,30 @@ class Route
     // Takes path, checks for {?}, and changes {?} to values from uri.
     private static function dynamicVariables($path, $uri)
     {
-        $pattern = '@\{([a-z]{1,50})\}@';
-        preg_match_all($pattern, $path, $dynVar);
+        $pattern = '@\{([a-zA-Z]{1,50})\}@';
+        preg_match_all($pattern, $path, $pathMatches);
+        
+        $pattern = '@([0-9]{1,10})@';
+        preg_match_all($pattern, $uri, $uriMatches);
 
-        if (count($dynVar[1])) {
-
+        $dynamicVariables = [];
+        if (count($pathMatches[1]) == count($uriMatches[1]) && count($uriMatches[1]) > 0) {
+            // var_dump($pathMatches[1], $uriMatches[1]);
+            foreach ($pathMatches[1] AS $k => $field) {
+                // echo $field.' = '.$uriMatches[1][$k].'<br />'.PHP_EOL;
+                $dynamicVariables[$field] = $uriMatches[1][$k];
+                $path = str_replace('{'.$field.'}', $uriMatches[1][$k], $path);
+            }
+            
+            /*
+            foreach ($dynVar[0] AS $find) {
+                $path = str_replace($find, $replace, $path);
+            }
+            */
+            /*
             $u = $uri;
             $e = preg_split('@[\{|\}]@', $path);
+            var_dump($path, $uri, $e);
             foreach ($e AS $ek => $ev) {
                 if ($ek % 2 == 0) {
                     $u = str_replace($ev, ',', $u);
@@ -153,14 +168,14 @@ class Route
             unset($e, $u);
 
             $path = str_replace($dynVar[0][0], $dynVal[0], $path);
-        } else {
-            $dynVal = [];
+            */
         }
 
-        return [$path, $dynVar, $dynVal];
+        return [$path, $dynamicVariables];
+        // return [$path, $pathMatches, $dynamicVariables];
     }
 
-    private static function getControllerByUri($path, $call, $uri, $dynVar, $dynVal)
+    private static function getControllerByUri($path, $call, $uri, $dynamicVariables) // $dynVar, $dynVal)
     {
         if (is_callable($call)) {
             echo $call();
@@ -185,28 +200,32 @@ class Route
                      */
                 }
 
-                $n = new $classNamespace;
+                $classNamespaceObject = new $classNamespace;
 
                 $call = str_replace('@', '::', $call);
 
                 $result = null;
+                /*
                 if (isset($dynVar[1]) && count($dynVar[1]) == 1) {
-                    $result = $n->$func($dynVal[0]);
+                    $result = $classNamespaceObject->$func($dynVal[0]);
                 } elseif (isset($dynVar[1]) && count($dynVar[1]) == 2) {
-                    $result = $n->$func($dynVal[0], $dynVal[1]);
+                    $result = $classNamespaceObject->$func($dynVal[0], $dynVal[1]);
                 } elseif (isset($dynVar[1]) && count($dynVar[1]) == 3) {
-                    $result = $n->$func($dynVal[0], $dynVal[1], $dynVal[2]);
+                    $result = $classNamespaceObject->$func($dynVal[0], $dynVal[1], $dynVal[2]);
                 } elseif (isset($dynVar[1]) && count($dynVar[1]) == 4) {
-                    $result = $n->$func($dynVal[0], $dynVal[1], $dynVal[2], $dynVal[3]);
+                    $result = $classNamespaceObject->$func($dynVal[0], $dynVal[1], $dynVal[2], $dynVal[3]);
                 } elseif (isset($dynVar[1]) && count($dynVar[1]) > 4) {
                     trigger_error('Route does not suppore more than 4 dynamic variable. Fix in Route::getControllerByUri!', E_USER_ERROR);
+                */
+                if (count($dynamicVariables) > 0) {
+                    $result = call_user_func_array([$classNamespaceObject,$func], $dynamicVariables);
                 } else {
                     $rClass = new \ReflectionClass($classNamespace);
                     $method = $rClass->getMethod($func);
 
                     $c = $method->getNumberOfParameters();
                     if ($c == 0) {
-                        $result = $n->$func();
+                        $result = $classNamespaceObject->$func();
                     } else if ($c >= 1) {
                         $inst = array();
                         foreach ($method->getParameters() as $num => $parameter) {
@@ -223,11 +242,11 @@ class Route
                             }
                         }
                         if (count($inst) == 1) {
-                            $result = $n->$func($inst[0]);
+                            $result = $classNamespaceObject->$func($inst[0]);
                         } elseif (count($inst) == 2) {
-                            $result = $n->$func($inst[0], $inst[1]);
+                            $result = $classNamespaceObject->$func($inst[0], $inst[1]);
                         } elseif (count($inst) == 3) {
-                            $result = $n->$func($inst[0], $inst[1], $inst[2]);
+                            $result = $classNamespaceObject->$func($inst[0], $inst[1], $inst[2]);
                         } else {
                             die('Fix Route > getControllerByUri > ReflectionClass');
                         }
