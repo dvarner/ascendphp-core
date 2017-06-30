@@ -40,6 +40,8 @@ class Session {
 		
 		if ($ve[0] >= 5 && $ve[1] >= 4) {
 			if (session_status() == PHP_SESSION_NONE) {
+                ini_set('session.gc_maxlifetime', 12*3600);
+                session_set_cookie_params(12*3600);
 				session_start();
 			}
 		} else {

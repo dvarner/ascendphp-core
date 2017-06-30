@@ -23,7 +23,7 @@ class Database
         $db->table = $table;
         return $db;
     }
-
+    
     public function get($keyAsId = true)
     {
         $this->build();
@@ -234,31 +234,31 @@ class Database
         var_dump($this->lastSQL);
     }
     public function interpolateQuery($query, $params) {
-    $keys = array();
-    $values = $params;
+        $keys = array();
+        $values = $params;
 
-    # build a regular expression for each parameter
-    foreach ($params as $key => $value) {
-        if (is_string($key)) {
-            $keys[] = '/:'.$key.'/';
-        } else {
-            $keys[] = '/[?]/';
+        # build a regular expression for each parameter
+        foreach ($params as $key => $value) {
+            if (is_string($key)) {
+                $keys[] = '/:'.$key.'/';
+            } else {
+                $keys[] = '/[?]/';
+            }
+
+            if (is_string($value))
+                $values[$key] = "'" . $value . "'";
+
+            if (is_array($value))
+                $values[$key] = "'" . implode("','", $value) . "'";
+
+            if (is_null($value))
+                $values[$key] = 'NULL';
         }
 
-        if (is_string($value))
-            $values[$key] = "'" . $value . "'";
+        $query = preg_replace($keys, $values, $query);
 
-        if (is_array($value))
-            $values[$key] = "'" . implode("','", $value) . "'";
-
-        if (is_null($value))
-            $values[$key] = 'NULL';
+        return $query;
     }
-
-    $query = preg_replace($keys, $values, $query);
-
-    return $query;
-}
     /*
     public function tableExists($table){
         // @todo -user:dvarner -date:12/9/2015 Need to update table to use $this->getPre()
@@ -267,25 +267,7 @@ class Database
         $result = $this->db->resultset();
         return (count($result) > 0?true:false);
     }
-
-    public static function select($sql, $bind = false) {
-        self::init();
-        self::$db->prepare($sql);
-        // $this->lastSQL['sql'] = $sql;
-        // $this->lastSQL['bind'] = $bind;
-
-        if(is_array($bind) && count($bind) > 0) {
-            foreach ($bind AS $v) {
-                self::$db->bind($v[0], $v[1]);
-                unset($v);
-            }
-        }
-
-        $rows = self::$db->execute();
-
-        return $rows;
-    }
-
+    
     /*
     public function getPre() {
         return $this->db->getPre();
