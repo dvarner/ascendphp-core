@@ -86,13 +86,10 @@ class Model
      */
     public function save()
     {
-
-        $modelNamespace = '\\' . get_called_class();
-        $e = explode('\\', $modelNamespace);
-        $modelName = strtolower($e[count($e) - 1]);
+        $modelName = $this->getCalledModelName();
         $tableName = $this->getTable();
 
-        $allowed = array_merge($this->fillable, $this->guarded, array('id'));
+        $allowed = array_merge($this->fillable, $this->guarded, ['id']);
 
         $fields = array();
         foreach ($allowed AS $field) {
@@ -112,7 +109,7 @@ class Model
             exit;
             */
         } else {
-            $exist = Database::table($tableName)->where($tableName, 'id', '=', $fields['id'])->first();
+            $exist = $modelName::where('id', '=', $fields['id'])->first();
             $wheres['id'] = $fields['id'];
             $id = $fields['id'];
             unset($fields['id']);
@@ -134,10 +131,6 @@ class Model
 
     public function delete($id)
     {
-
-        $modelNamespace = '\\' . get_called_class();
-        $e = explode('\\', $modelNamespace);
-        $modelName = strtolower($e[count($e) - 1]);
         $tableName = $this->getTable();
 
         BS::getDB()->deleteSoft($tableName, $id);
@@ -167,6 +160,13 @@ class Model
         $valid = new Validation;
         $r = $valid->valid($validations);
         return $r;
+    }
+
+    public function getCalledModelName() {
+        $modelNamespace = '\\' . get_called_class();
+        $e = explode('\\', $modelNamespace);
+        $modelName = strtolower($e[count($e) - 1]);
+        return $modelName;
     }
 
     /**
@@ -217,7 +217,9 @@ class Model
 
     public static function where($first, $expression, $second)
     {
-
+        $table = self::getTableName();
+        return Database::table($table)->where($first, $expression, $second);
+        /*
         $table = self::getTableName();
         self::$dbStatic = new Database;
         self::$dbStatic->table = $table;
@@ -229,6 +231,7 @@ class Model
             self::$dbStatic->where[] = $first . ' ' . $expression . " '{$second}'";
         }
         return self::$dbStatic;
+        */
     }
 
     /*

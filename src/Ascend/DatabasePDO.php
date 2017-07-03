@@ -11,6 +11,8 @@ class DatabasePDO
     public $storeConnectionName = 'default';
     public $dbh = null;
 
+    // dont need __construct if call connect / setConnection manually
+
     public function __construct()
     {
         if (BS::getConfig('db')) {

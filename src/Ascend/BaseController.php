@@ -7,15 +7,11 @@ use Ascend\Feature\Permission;
 class BaseController
 {
     protected $model = null;
-    protected $pathSub = '';
 
     protected function setModel($model)
     {
-        $this->model = strtolower($model);
-    }
-    
-    protected function setPathSub($pathSub){
-        $this->pathSub = $pathSub;
+        // $this->model = strtolower($model);
+        $this->model = $model;
     }
 
     protected function isModelSet()
@@ -34,26 +30,27 @@ class BaseController
     public function viewList()
     {
         $this->isModelSet();
-        Permission::get($this->model, 'get');
+        Permission::get('user', 'get');
 
         // GET /photos
 
         // Two different ways; send data below or ajax on page; ajax is on page.
         $r = new Request;
         // $a[$this->model . 's'] = $this->index($r);
-        return Route::getView($this->pathSub . $this->model . '/index'); // , $a);
+        return Route::getView(strtolower($this->model) . '/index'); // , $a);
     }
 
     // get = index
     public function methodGet()
     { // Request $request) {
         $this->isModelSet();
-        Permission::get($this->model, 'get');
+        Permission::get('user', 'get');
+
+
 
         // GET /api/photos
 
-        $modelName = ucfirst($this->model);
-        $modelNamespace = '\\App\\Model\\' . $modelName;
+        $modelNamespace = '\\App\\Model\\' . $this->model;
 
         return $modelNamespace::all();
     }
@@ -62,38 +59,28 @@ class BaseController
     public function viewCreate()
     {
         $this->isModelSet();
-        Permission::get($this->model, 'post');
+        Permission::get('user', 'post');
 
         // GET photos/create
 
-        return Route::getView($this->pathSub . $this->model . '/create');
+        return Route::getView(strtolower($this->model) . '/create');
     }
 
     // post = store
-    public function methodPost()//$injectedVariables = [])
+    public function methodPost()
     {
         $this->isModelSet();
-        Permission::get($this->model, 'post'); // @todo change to be dynamic; all of them in this file...
+        Permission::get('user', 'post');
 
         // POST /api/photos
 
-        $modelName = ucfirst($this->model);
-        $modelNamespace = '\\App\\Model\\' . $modelName;
+        $modelNamespace = '\\App\\Model\\' . $this->model;
 
         $model = new $modelNamespace;
 
         $r = new Request;
         $r->setMethod = 'POST';
         $a = $r->all();
-
-        // Pass variables through which might be set on backend and not on fe.
-        // Example: user_id set by session or timestamp of action.
-        // @todo took out causing issues; so need to figure out why it was done and if needed
-        /*
-        foreach ($injectedVariables AS $k => $v) {
-            $a[$k] = $v;
-        }
-        */
 
         if (is_array($a) && count($a) > 0) {
             foreach ($a AS $k => $v) {
@@ -115,12 +102,11 @@ class BaseController
     public function methodGetOne($id)
     {
         $this->isModelSet();
-        Permission::get($this->model, 'get');
+        Permission::get('user', 'get');
 
         // GET /api/photos/{id}
 
-        $modelName = ucfirst($this->model);
-        $modelNamespace = '\\App\\Model\\' . $modelName;
+        $modelNamespace = '\\App\\Model\\' . $this->model;
 
         return $modelNamespace::where('id', '=', $id)->first();
     }
@@ -129,24 +115,23 @@ class BaseController
     public function viewEdit($id)
     {
         $this->isModelSet();
-        Permission::get($this->model, 'put');
+        Permission::get('user', 'put');
 
         // GET /api/photos/{id}/edit
 
-        $a = $this->methodGetOne($id);
-        return Route::getView($this->pathSub . $this->model . '/edit', $a);
+        $a = $this->getOne($id);
+        return Route::getView(strtolower($this->model) . '/edit', $a);
     }
 
     // put = update
     public function methodPut($id)
     {
         $this->isModelSet();
-        Permission::get($this->model, 'put');
+        Permission::get('user', 'put');
 
         // PUT /api/photos/{id}
 
-        $modelName = ucfirst($this->model);
-        $modelNamespace = '\\App\\Model\\' . $modelName;
+        $modelNamespace = '\\App\\Model\\' . $this->model;
 
         $model = new $modelNamespace;
         $model->id = $id;
@@ -165,7 +150,7 @@ class BaseController
         $id = $model->save();
 
         $data = array();
-        $data['data'] = $this->methodGetOne($id);
+        $data['data'] = $this->getOne($id);
         $data['status'] = 'success';
         return $data;
     }
@@ -174,12 +159,11 @@ class BaseController
     public function methodDelete($id)
     {
         $this->isModelSet();
-        Permission::get($this->model, 'delete');
+        Permission::get('user', 'delete');
 
         // DELETE /api/photos/{id}
 
-        $modelName = ucfirst($this->model);
-        $modelNamespace = '\\App\\Model\\' . $modelName;
+        $modelNamespace = '\\App\\Model\\' . $this->model;
 
         $model = new $modelNamespace;
         $model->id = $id;

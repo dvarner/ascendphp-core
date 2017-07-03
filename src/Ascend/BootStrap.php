@@ -1,5 +1,6 @@
 <?php namespace Ascend;
 
+use Ascend\Databate;
 use Ascend\Debug;
 
 /**
