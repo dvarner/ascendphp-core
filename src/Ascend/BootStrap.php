@@ -2,6 +2,7 @@
 
 use Ascend\Databate;
 use Ascend\Debug;
+use Ascend\Feature\Session;
 
 /**
  * BootStrap loads in all controllers / models needed when they are called and their dependencies
@@ -46,6 +47,9 @@ class BootStrap
             CommandLine::init();
             exit;
         }
+
+        Session::start();
+
     }
     public static function autoloader()
     {

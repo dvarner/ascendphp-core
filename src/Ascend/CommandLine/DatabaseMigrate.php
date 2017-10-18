@@ -67,10 +67,36 @@ class DatabaseMigrate extends _CommandLineAbstract
                         unset($bk, $bv);
                     }
 
+                    // var_dump($before, $after);
+
                     // Do alter's if changes exist
                     if (count($before) > 0 || count($after) > 0) {
                         $output .= 'Alter table "' . $tableName . '"' . RET;
                         // $output.= dump($before) . dump($after);
+
+                        $renameMap = $n->getRenameMap();
+                        if (isset($renameMap)) {
+                            foreach ($after AS $ak => $av) {
+                                $rCnt = count($renameMap);
+                                // Go backwards for newest to oldest and find last occurance
+                                for ($r = $rCnt-1; $r >= 0; $r--) {
+                                    // $output.= 'Rename Check: ' . $renameMap[$r]['to'] .' == ' . $ak . RET;
+                                    if ($renameMap[$r]['to'] == $ak) {
+                                        $sql = 'ALTER TABLE ' . $tableName . ' CHANGE ';
+                                        $sql.= $renameMap[$r]['from'];
+                                        $sql.= ' ';
+                                        $sql.= $after[$renameMap[$r]['to']];
+                                        $output .=  $renameMap[$r]['from'] . ': ' . $sql . RET;
+                                        $db->query($sql);
+                                        $db->execute();
+                                        $this->saveMigrationRow($batchId, $model, $n->getStructure());
+                                        unset($before[$renameMap[$r]['from']], $after[$renameMap[$r]['to']]);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
                         if (count($before) > 0) {
                             // Things to remove
                             foreach ($before AS $bk => $bv) {

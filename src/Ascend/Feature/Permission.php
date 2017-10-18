@@ -6,8 +6,10 @@ use App\Model\RolePermission;
 
 class Permission
 {
-    public static function get($slug, $type = 'get')
+    public static function get($slug, $type = 'get', $return = false)
     {
+        $slug = strtolower($slug);
+
         if ($type == 'get') {
             $type = 'method_get';
         }
@@ -51,16 +53,20 @@ class Permission
         $row = $db->single();
 
         if (isset($row[$type]) && $row[$type] == 1) {
-            // Continue :) yay...
+            return $row;
         } else {
-            header('HTTP/1.0 403 Forbidden');
-            $uri = $_SERVER['REQUEST_URI'];
-            if (substr($uri, 1, 3) == 'api') {
-                echo json_encode(array('error' => 'access-denied'));
+            if ($return === true) {
+                return false;
             } else {
-                header("location: /access-denied");
+                header('HTTP/1.0 403 Forbidden');
+                $uri = $_SERVER['REQUEST_URI'];
+                if (substr($uri, 1, 3) == 'api') {
+                    echo json_encode(array('error' => 'access-denied'));
+                } else {
+                    header("location: /access-denied");
+                }
+                exit;
             }
-            exit;
         }
     }
 }

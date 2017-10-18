@@ -18,11 +18,12 @@ class CommandLine
 		$output = '';
 		$output.= 'PHP Version: ' . phpversion() . RET;
 		$output.= 'Help! Command not found!.' . RET;
-		$output.= 'Here is a list of commands available:' . RET;
+		$output.= 'Here is a list of commands available:' . RET . RET;
 
 		require_once $PCmd . '_CommandLineAbstract.php';
 
 		// Get Framework specific Command lines
+        $listOfCommands = [];
 		$path = $PCmd;
 		$cdir = scandir($path); 
 		foreach ($cdir as $key => $value) { 
@@ -39,7 +40,7 @@ class CommandLine
                 echo $value.RET;
                 echo RET;
                 */
-					$output.= self::getEachModel($cmd, $path, $value);
+					$listOfCommands[] = self::getEachModel($cmd, $path, $value);
 				}
 			} 
 		}
@@ -54,14 +55,21 @@ class CommandLine
                     &&
                     '_' != substr($value, 0, 1)
                 ) {
+                /*
                 echo 'B'.RET;
                 echo $cmd.RET;
                 echo $path.RET;
                 echo $value.RET;
+                */
                 echo RET;
-                    $output.= self::getEachModel($cmd, $path, $value);
+                    $listOfCommands[] = self::getEachModel($cmd, $path, $value);
                 }
             }
+        }
+
+        sort($listOfCommands);
+        foreach ($listOfCommands as $v) {
+            $output .= $v . RET;
         }
 		
 		echo $output;
@@ -87,7 +95,7 @@ class CommandLine
 			$n->run(); exit;
 		}
 		
-		$output.= $n->getCommand() . ' - ' . $n->getName() . RET;
+		$output.= $n->getCommand() . ' - ' . $n->getName();
 		
 		unset($className, $n);
 		

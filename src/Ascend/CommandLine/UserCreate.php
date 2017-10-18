@@ -17,7 +17,7 @@ class UserCreate extends _CommandLineAbstract
 
         $argv = CommandLineArguments::getArgv();
 
-        if (isset($argv[2]) && is_numeric($argv[2]) && isset($argv[3]) && isset($argv[4])) {
+        if (isset($argv[2]) && is_numeric($argv[2]) && isset($argv[3]) && isset($argv[4]) && isset($argv[5])) {
 
             $exist = User::where('username', '=', $argv[3])->first();
 
@@ -26,7 +26,12 @@ class UserCreate extends _CommandLineAbstract
                 $user->role_id = $argv[2]; // @todo Eventually make this accept the int or string format
                 $user->username = $argv[3];
                 $user->password = $this->passwordHash($argv[4]);
+                $user->email = $argv[5];
                 $user->confirm = '';
+                $user->timezone = 'America/New_York'; // @todo pull from config
+                $user->language = 'en'; // @todo pull from config
+                $user->country = 'us'; // @todo pull from config
+                $user->is_active = 1;
                 $user->save();
                 echo 'Saved!' . RET;
             } else {

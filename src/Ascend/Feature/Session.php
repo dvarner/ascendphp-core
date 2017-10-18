@@ -37,18 +37,35 @@ class Session {
 	public static function start() {
 		$version = phpversion();
 		$ve = explode('.', $version);
-		
-		if ($ve[0] >= 5 && $ve[1] >= 4) {
-			if (session_status() == PHP_SESSION_NONE) {
+
+        if(session_id() == '') {
+            ini_set('session.gc_maxlifetime', 12*3600);
+            session_set_cookie_params(12*3600);
+            session_start();
+        } else {
+            $data = $_SESSION;
+            session_destroy();
+            ini_set('session.gc_maxlifetime', 12*3600);
+            session_set_cookie_params(12*3600);
+            session_start();
+            $_SESSION = $data;
+        }
+
+        /*
+        if ($ve[0] >= 5 && $ve[1] >= 4) {
+            if (session_status() == PHP_SESSION_NONE) {
                 ini_set('session.gc_maxlifetime', 12*3600);
                 session_set_cookie_params(12*3600);
-				session_start();
-			}
-		} else {
-			if(session_id() == '') {
-				session_start();
-			}
-		}
+                session_start();
+            }
+        } else {
+            if(session_id() == '') {
+                ini_set('session.gc_maxlifetime', 12*3600);
+                session_set_cookie_params(12*3600);
+                session_start();
+            }
+        }
+        */
 	}
 	
 	public static function exist($var) {

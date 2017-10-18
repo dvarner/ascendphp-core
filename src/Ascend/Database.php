@@ -1,6 +1,7 @@
 <?php namespace Ascend;
 
 use Ascend\BootStrap as BS;
+use Carbon\Carbon;
 
 class Database
 {
@@ -90,7 +91,7 @@ class Database
         $this->setSQLLimit(1);
         $this->runQueryAndBind();
         $row = $this->db->resultset(false);
-        $row = isset($row[0]) ? $row[0] : [];
+        $row = isset($row[0]) ? $row[0] : null;
         return $row;
     }
 
@@ -118,8 +119,8 @@ class Database
 
         // $this->combineSQLIntoSQLString();
         $this->runQuery();
-        $this->setLastSQL();
         $this->loadBinds();
+        $this->setLastSQL();
         $this->db->execute();
 
         // *** Get inserted id
@@ -128,6 +129,7 @@ class Database
     }
     public function update($table, $update, $where)
     {
+        $this->clearSQLStore();
         $this->table = $table;
 
         $sql = 'UPDATE ' . $this->table . ' SET ';
@@ -135,28 +137,29 @@ class Database
         foreach ($update AS $k => $v) {
             $sqlu .= ($sqlu == '' ? '' : ',') . $k . ' = :' . $k;
         }
-        // $sqlu.= ',updated_at = "' . \Carbon\Carbon::now() . '"';
         $sql .= $sqlu;
         $sqlw = "";
         foreach ($where AS $k => $v) {
             $sqlw .= ($sqlw == '' ? '' : ' && ') . $k . ' = :' . $k;
         }
         $sql .= " WHERE " . $sqlw;
-        // var_dump($sql,$update, $where); exit;
+        $this->sql['string'] = $sql;
         $this->db->query($sql);
 
+        $binds = [];
         // *** Bind fields/values to query
         foreach ($update AS $name => $value) {
-            $this->db->bind(':' . $name, $value);
+            $binds[$name] = $value;
             unset($name, $value);
         }
         foreach ($where AS $name => $value) {
-            $this->db->bind(':' . $name, $value);
+            $binds[$name] = $value;
             unset($name, $value);
         }
+        $this->sql['binds'] = $binds;
+        $this->loadBinds();
 
-        // echo $this->interpolateQuery($sql, array_merge($update, $where));exit;
-
+        $this->setLastSQL();
         $this->db->execute();
         // $this->db->debugDumpParams();
     }
@@ -262,6 +265,10 @@ class Database
     protected function setLastSQL()
     {
         $this->lastSQL = $this->sql;
+        if (BS::getConfig('dev') === true && isset($this->sql['string'])) {
+            $DS = DIRECTORY_SEPARATOR;
+            file_put_contents(PATH_STORAGE . 'log'.$DS.'sql.log', $this->sql['string'] . PHP_EOL, FILE_APPEND | LOCK_EX);
+        }
     }
     protected function loadBinds() {
         if (isset($this->sql['binds']) && is_array($this->sql['binds']) && count($this->sql['binds']) > 0){
@@ -276,12 +283,11 @@ class Database
     {
         $db = BS::getDB();
         // return $db->lastSQL['string'];
-        return $db->interpolateQuery($db->lastSQL['string'], isset($db->lastSQL['bind']) ? $db->lastSQL['bind'] : []);
+        return $db->interpolateQuery($db->lastSQL['string'], isset($db->lastSQL['binds']) ? $db->lastSQL['binds'] : []);
     }
     public function getLastSQLString() {
         // return $this->lastSQL['string'];
-        return $this->interpolateQuery($this->lastSQL['string'], isset($this->lastSQL['bind']) ? $this->lastSQL['bind'] : []);
-
+        return $this->interpolateQuery($this->lastSQL['string'], isset($this->lastSQL['binds']) ? $this->lastSQL['binds'] : []);
     }
     public function interpolateQuery($query, $params) {
         $keys = array();

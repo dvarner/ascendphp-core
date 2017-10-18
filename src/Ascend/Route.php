@@ -95,7 +95,9 @@ class Route
             if (BS::getConfig('debug.script_runtime')) {
                 echo Debug::displayLogTime();
             }
-            exit;
+            return true;
+        } else {
+            die($path . ' not found');
         }
     }
 
@@ -199,6 +201,13 @@ class Route
                      * }
                      */
                 }
+
+                /*
+                if (!isset($_SESSION['user.id']) && $_SERVER['REQUEST_URI'] != '/login') {
+                    header("location: /login");
+                    exit;
+                }
+                */
 
                 $classNamespaceObject = new $classNamespace;
 

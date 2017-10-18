@@ -1,5 +1,6 @@
 <?php namespace Ascend;
 
+use Ascend\Bootstrap as BS;
 use Ascend\Feature\Permission;
 
 // @todo Setup way to lockdown with api key
@@ -13,9 +14,16 @@ class BaseController
     {
         // $this->model = strtolower($model);
         $this->model = $model;
+        $this->modelPermission = $model;
     }
-    
-    protected function setPathSub($pathSub){
+
+    protected function setModelPermission($model)
+    {
+        $this->modelPermission = $model;
+    }
+
+    protected function setPathSub($pathSub)
+    {
         $this->pathSub = $pathSub;
     }
 
@@ -35,21 +43,21 @@ class BaseController
     public function viewList()
     {
         $this->isModelSet();
-        Permission::get($this->model, 'get');
+        Permission::get($this->modelPermission, 'get');
 
         // GET /photos
 
         // Two different ways; send data below or ajax on page; ajax is on page.
         $r = new Request;
         // $a[$this->model . 's'] = $this->index($r);
-        return Route::getView($this->pathSub . $this->model . '/index'); // , $a);
+        return Route::getView($this->pathSub . strtolower($this->model) . '/index'); // , $a);
     }
 
     // get = index
     public function methodGet()
     { // Request $request) {
         $this->isModelSet();
-        Permission::get($this->model, 'get');
+        Permission::get($this->modelPermission, 'get');
 
         // GET /api/photos
 
@@ -62,18 +70,19 @@ class BaseController
     public function viewCreate()
     {
         $this->isModelSet();
-        Permission::get($this->model, 'post');
+        Permission::get($this->modelPermission, 'post');
 
         // GET photos/create
 
-        return Route::getView(strtolower($this->model) . '/create');
+        // return Route::getView(strtolower($this->model) . '/create');
+        return Route::getView($this->pathSub . strtolower($this->model) . '/create');
     }
 
     // post = store
     public function methodPost()//$injectedVariables = [])
     {
         $this->isModelSet();
-        Permission::get($this->model, 'post');
+        Permission::get($this->modelPermission, 'post');
 
         // POST /api/photos
 
@@ -93,7 +102,7 @@ class BaseController
             $a[$k] = $v;
         }
         */
-        
+
         if (is_array($a) && count($a) > 0) {
             foreach ($a AS $k => $v) {
                 if (is_null($model->$k)) {
@@ -104,7 +113,13 @@ class BaseController
 
         $id = $model->save();
 
-        $data = array();
+        $db = Bootstrap::getDB();
+        // var_dump($db->getlastSQL());
+        // echo \Ascend\Database::getLastSQL();
+        // echo $db->getlastSQLString();
+        // die;
+
+        $data = [];
         $data['data'] = $this->methodGetOne($id);
         $data['status'] = 'success';
         return $data;
@@ -114,33 +129,34 @@ class BaseController
     public function methodGetOne($id)
     {
         $this->isModelSet();
-        Permission::get($this->model, 'get');
+        Permission::get($this->modelPermission, 'get');
 
         // GET /api/photos/{id}
 
         $modelNamespace = '\\App\\Model\\' . $this->model;
-        return $modelNamespace::where('id', '=', $id)->first();
+        $r = $modelNamespace::where('id', '=', $id)->first();
+        unset($r['password']);
+        return $r;
     }
 
     // viewEdit = edit
     public function viewEdit($id)
     {
         $this->isModelSet();
-        Permission::get($this->model, 'put');
+        Permission::get($this->modelPermission, 'put');
 
         // GET /api/photos/{id}/edit
 
         $a = $this->methodGetOne($id);
-        return Route::getView(strtolower($this->model) . '/edit', $a);
+        // return Route::getView(strtolower($this->model) . '/edit', $a);
+        return Route::getView($this->pathSub . strtolower($this->model) . '/edit', $a);
     }
 
     // put = update
     public function methodPut($id)
     {
         $this->isModelSet();
-        Permission::get($this->model, 'put');
-
-        // PUT /api/photos/{id}
+        Permission::get($this->modelPermission, 'put');
 
         $modelNamespace = '\\App\\Model\\' . $this->model;
 
@@ -149,9 +165,19 @@ class BaseController
 
         $r = new Request;
         $a = $r->all();
+        // echo '<pre>'; var_dump($a); exit;
+
+        if (isset($a['password']) && $a['password'] != '') {
+            $a['password'] = password_hash($a['password'], PASSWORD_BCRYPT, ['cost' => BS::getConfig('password_cost')]);
+        } else {
+            unset($a['password']);
+        }
 
         if (is_array($a) && count($a) > 0) {
             foreach ($a AS $k => $v) {
+                if ($k == 'confirmation_at'){
+                    $v = date('Y-m-d H:i:s', strtotime($v));
+                }
                 if (is_null($model->$k)) {
                     $model->$k = $v;
                 }
@@ -160,7 +186,7 @@ class BaseController
 
         $id = $model->save();
 
-        $data = array();
+        $data = [];
         $data['data'] = $this->methodGetOne($id);
         $data['status'] = 'success';
         return $data;
@@ -170,7 +196,7 @@ class BaseController
     public function methodDelete($id)
     {
         $this->isModelSet();
-        Permission::get($this->model, 'delete');
+        Permission::get($this->modelPermission, 'delete');
 
         // DELETE /api/photos/{id}
 

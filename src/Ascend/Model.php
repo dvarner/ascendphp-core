@@ -55,6 +55,10 @@ class Model
         }
     }
 
+    public function getFillable() {
+        return $this->fillable;
+    }
+
     public function getStructure()
     {
         $fields = array();
@@ -62,23 +66,27 @@ class Model
             $fields[$field] = '`' . $field . '` ' . $type;
         }
 
-        if (isset($this->timestamps)) {
+        if (!isset($this->timestamps)){ $this->timestamps = true; }
+        if ($this->timestamps === true) {
             $fields['created_at'] = 'created_at timestamp null default null';
             $fields['updated_at'] = 'updated_at timestamp null default null';
+        }
+
+        if (!isset($this->softDelete)){ $this->softDelete = true; }
+        if ($this->softDelete === true) {
             $fields['deleted_at'] = 'deleted_at timestamp null default null';
         }
-        /*
-        use SoftDeletes; <--- find this in model
-        if (isset($this->dates['deleted_at'])) {
 
-        }
-        */
         return $fields;
+    }
+
+    public function getRenameMap() {
+        return (isset($this->renameMap)?$this->renameMap:[]);
     }
 
     public static function insert($fields)
     {
-        BS::getDB()->insert(self::getTableName(), $fields);
+        return BS::getDB()->insert(self::getTableName(), $fields);
     }
 
     /**
@@ -88,8 +96,15 @@ class Model
     {
         $modelName = $this->getCalledModelName();
         $tableName = $this->getTable();
+        /*
+        $modelNamespace = '\\' . get_called_class();
+        $e = explode('\\', $modelNamespace);
+        $modelName = strtolower($e[count($e) - 1]);
+        $tableName = $this->getTable();
+        */
 
-        $allowed = array_merge($this->fillable, $this->guarded, ['id']);
+        if (!isset($this->guarded)){ $this->guarded = []; }
+        $allowed = array_merge($this->fillable, $this->guarded, array('id'));
 
         $fields = array();
         foreach ($allowed AS $field) {
@@ -109,6 +124,8 @@ class Model
             exit;
             */
         } else {
+            // $exist = Database::table($tableName)->where($tableName, 'id', '=', $fields['id'])->first();
+            $modelName = '\\App\\Model\\'.$modelName;
             $exist = $modelName::where('id', '=', $fields['id'])->first();
             $wheres['id'] = $fields['id'];
             $id = $fields['id'];
@@ -129,8 +146,16 @@ class Model
         */
     }
 
+    public function methodDelete($id) {
+        $this->delete($id);
+    }
+    
     public function delete($id)
     {
+
+        $modelNamespace = '\\' . get_called_class();
+        $e = explode('\\', $modelNamespace);
+        $modelName = strtolower($e[count($e) - 1]);
         $tableName = $this->getTable();
 
         BS::getDB()->deleteSoft($tableName, $id);
@@ -146,7 +171,7 @@ class Model
         // $validations = array();
         foreach ($addValidations AS $field => $newValidations) {
             foreach ($newValidations AS $special => $newValidation) {
-                if (isset($this->validation[$field])) {
+                if (isset($this->validation[$field]) && is_array($newValidation)) {
                     if (!in_array($newValidation, $this->validation[$field])) {
                         $validations[$field] = $this->validation[$field];
                         $validations[$field][$special] = $newValidation;
@@ -160,13 +185,6 @@ class Model
         $valid = new Validation;
         $r = $valid->valid($validations);
         return $r;
-    }
-
-    public function getCalledModelName() {
-        $modelNamespace = '\\' . get_called_class();
-        $e = explode('\\', $modelNamespace);
-        $modelName = strtolower($e[count($e) - 1]);
-        return $modelName;
     }
 
     /**
@@ -232,6 +250,29 @@ class Model
         }
         return self::$dbStatic;
         */
+    }
+
+    public function getCalledModelName() {
+        $modelNamespace = '\\' . get_called_class();
+        $e = explode('\\', $modelNamespace);
+        // $modelName = strtolower($e[count($e) - 1]);
+        $modelName = $e[count($e) - 1];
+        return $modelName;
+    }
+
+    public static function getById($id) {
+        $table = self::getTableName();
+
+        $sql = "SELECT * FROM {$table}";
+        $sql.= " WHERE ";
+        $sql.= "id = {$id}";
+        $db = BS::getDBPDO();
+        $db->query($sql);
+        $db->execute();
+        $row = $db->resultset(false);
+        $row = isset($row[0]) ? $row[0] : null;
+
+        return $row;
     }
 
     /*
