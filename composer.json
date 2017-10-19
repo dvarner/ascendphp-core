@@ -15,7 +15,7 @@
   },
     "autoload": {
         "psr-4": {
-            "Ascend\\Core\\": "src/"
+            "Ascend\\Core\\": "src/Ascend/Core"
         }
     }
 }
