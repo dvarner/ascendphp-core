@@ -287,7 +287,7 @@ class Validation
      * /
     public function formatUnique($value, $table)
     {
-        $result = BS::getController('Database')
+        $result = Bootstrap::getController('Database')
             ->select($table, 'id')
             ->where($table, $this->field, '=', $value)
             ->first();
@@ -302,7 +302,7 @@ class Validation
     }
 
     /*public function formatUniqueIncase($value, $table){
-        $result = BS::getClass('Database')
+        $result = Bootstrap::getClass('Database')
                 ->select($table, 'id')
                 ->where($table, $this->field, 'like', $value)
                 ->first();

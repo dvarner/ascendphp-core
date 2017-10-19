@@ -1,8 +1,7 @@
-<?php namespace Ascend\CommandLine;
+<?php namespace Ascend\Core\CommandLine;
 
-use \Ascend\Bootstrap as BS;
-use \Ascend\CommandLine\_CommandLineAbstract;
-use \Ascend\CommandLineArguments;
+use \Ascend\Core\CommandLine\_CommandLineAbstract;
+use \Ascend\Core\CommandLineArguments;
 use \App\Model\Permission;
 use \App\Model\Role;
 use \App\Model\RolePermission;
