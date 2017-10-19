@@ -14,8 +14,6 @@
     "nesbot/carbon": "^1.21"
   },
     "autoload": {
-        "psr-4": {
-            "Ascend\\Core\\": "src/"
-        }
+      "classmap": ["src/Ascend/Core"]
     }
 }
