@@ -11,14 +11,11 @@
   "minimum-stability": "dev",
   "require": {
     "php": ">=5.4.0",
-    "nesbot/carbon": "^1.21",
-    "filp/whoops": "1.*"
+    "nesbot/carbon": "^1.21"
   },
     "autoload": {
-        "psr-0": {
-            "Ascend": "src/",
-            "Ascend\\Feature": "src/Ascend/Feature",
-            "Ascend\\CommandLine": "src/Ascend/CommandLine"
+        "psr-4": {
+            "Ascend\\Core": "src/"
         }
     }
 }
