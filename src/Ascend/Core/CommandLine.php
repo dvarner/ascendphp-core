@@ -10,7 +10,8 @@ class CommandLine
     public static function init()
     {
         $DS = DIRECTORY_SEPARATOR;
-        $PCmd = PATH_PROJECT . 'vendor'.$DS.'dvarner'.$DS.'ascendphp-core'.$DS.'src'.$DS.'Ascend'.$DS.'CommandLine'.$DS;
+        $PCmd = PATH_PROJECT . 'vendor'.$DS.'dvarner'.$DS.'ascendphp-core'.
+            $DS.'src'.$DS.'Ascend'.$DS.'Core'.$DS.'CommandLine'.$DS;
 		$argv = CommandLineArguments::getArgv();
 		$cmd = isset($argv[1]) ? $argv[1] : null;
 		// 2+ arguments.... figure out later
@@ -84,7 +85,7 @@ class CommandLine
 		
 		$className = str_replace('.php', '', $value);
         if (false !== strpos($path,'vendor')) {
-            $className = '\\' . 'Ascend' . '\\' . 'CommandLine' . '\\' . $className;
+            $className = '\\' . 'Ascend' . '\\' . 'Core' . '\\' . 'CommandLine' . '\\' . $className;
         } else {
             $className = '\\' . 'App' . '\\' . 'CommandLine' . '\\' . $className;
         }
