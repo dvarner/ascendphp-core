@@ -1,6 +1,6 @@
-<?php namespace Ascend\Feature;
+<?php namespace Ascend\Core\Feature;
 
-use Ascend\Bootstrap;
+use Ascend\Core\Bootstrap;
 
 class Validation
 {
