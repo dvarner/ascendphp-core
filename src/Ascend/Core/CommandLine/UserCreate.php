@@ -27,6 +27,8 @@ class UserCreate extends _CommandLineAbstract
                 $user->username = $argv[3];
                 $user->password = $this->passwordHash($argv[4]);
                 $user->email = $argv[5];
+                $user->firstname = '';
+                $user->lastname = '';
                 $user->confirm = '';
                 $user->timezone = 'America/New_York'; // @todo pull from config
                 $user->language = 'en'; // @todo pull from config
