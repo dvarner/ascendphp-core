@@ -146,7 +146,7 @@ class DatabasePDO
         return $this->dbh->beginTransaction();
     }
 
-    public function transactionEnd()
+    public function transactionCommit()
     {
         return $this->dbh->commit();
     }

@@ -150,13 +150,14 @@ class DatabaseMigrate extends _CommandLineAbstract
 
     private function migrationsModel()
     {
+        // @todo update this in framework
         $sql = "CREATE TABLE IF NOT EXISTS `migrations` (
 		  `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		  `batch_id` int unsigned NOT NULL,
 		  `model` varchar(255) NOT NULL,
 		  `structure` text NOT NULL,
 		  `created_at` timestamp NOT NULL
-		) ENGINE=InnoDB";
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci";
 
         $db = Bootstrap::getDBPDO();
         $db->query($sql);
