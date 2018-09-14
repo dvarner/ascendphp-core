@@ -2,6 +2,8 @@
 
 use Ascend\Core\Bootstrap;
 
+// @todo this whole class needs a rebuild and moved to framework with update
+
 class Validation
 {
     public function getRequest($var)
@@ -147,8 +149,12 @@ class Validation
 		if (Bootstrap::getConfig('debug.validation') === false) {
 			unset($this->result['debug']);
 		}
+
+		// echo '<pre>Validation()->valid()'; var_dump($this->result); exit;
+
+		return !isset($this->result['error']);
 		
-        return $this->result;
+        // return $this->result;
     }
 
     /**
@@ -314,11 +320,21 @@ class Validation
      */
     public function formatUnique($value, $table)
     {
+        /*
         $result = Bootstrap::getDB()
             ->where($table, $this->field, '=', $value)
             ->first();
-        if (is_array($result) && count($result) >= 1) {
-            $this->result['error'][] = 'Unique "' . $this->field . '" failed';
+        */
+        // @todo add this to framework
+        $sql = "SELECT * FROM {$table} WHERE {$this->field} = :value LIMIT 1";
+        $db = Bootstrap::getDBPDO();
+        $db->query($sql);
+        $db->bind(':value', $value);
+        $db->execute();
+        $row = $db->single();
+            
+        if (isset($row['id'])) {
+            $this->result['error'][] = '"' . $this->field . '" already exists';
             // $this->result['error'][] = $this->_class['db']->db->lastQuery();
         } else {
             $this->result['success'][] = 'Field "' . $this->field . '" is unique';
@@ -359,5 +375,10 @@ class Validation
             $this->result['error'][] = 'Username must start with letter and only' .
                 'letter, numbers, underscores, and dashes allowed.';
         }
+    }
+
+    public function getResults() {
+        // @todo add this to framework
+        return $this->result;
     }
 }

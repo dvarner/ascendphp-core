@@ -1,5 +1,6 @@
 <?php namespace Ascend\Core;
 
+use Ascend\Core\Bootstrap;
 use Ascend\Core\Request;
 use Ascend\Core\Feature\Validation;
 
@@ -37,7 +38,11 @@ class Model
 
         $sqlFields = implode(', ', $fields);
 
-        $sql = "CREATE TABLE IF NOT EXISTS `{$this->table}` ({$sqlFields}) ENGINE=InnoDB";
+        // @todo update this in framework; added default and COLLATE
+        $sql = "
+        CREATE TABLE IF NOT EXISTS `{$this->table}` ({$sqlFields})
+        ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci
+        ";
 
         $this->db->query($sql);
         $this->db->execute();
@@ -85,7 +90,14 @@ class Model
 
     public static function insert($fields)
     {
+        $fields['created_at'] = date('Y-m-d H:i:s', time());
         return Bootstrap::getDB()->insert(self::getTableName(), $fields);
+    }
+
+    // @todo move into framework
+    public static function update($fields, $where) {
+        $fields['updated_at'] = date('Y-m-d H:i:s', time());
+        return Bootstrap::getDB()->update(self::getTableName(), $fields, $where);
     }
 
     /**
@@ -165,8 +177,6 @@ class Model
 
     public function valid($addValidations)
     {
-        $validClass = new Validation;
-
         // $validations = array();
         foreach ($addValidations AS $field => $newValidations) {
             foreach ($newValidations AS $special => $newValidation) {
@@ -272,6 +282,51 @@ class Model
         $row = isset($row[0]) ? $row[0] : null;
 
         return $row;
+    }
+
+    public static function initStaticDB($db)
+    {
+        self::$staticDBh = $db;
+    }
+
+    public static function queryOne($sql, $bind) {
+        $db = Bootstrap::getDBPDO();
+        $db->query($sql);
+        foreach ($bind AS $name => $value) {
+            $db->bind(':' . $name, $value);
+            unset($name, $value);
+        }
+        $db->execute();
+        return $db->single();
+    }
+
+    public static function queryMany($sql, $bind) {
+        $db = Bootstrap::getDBPDO();
+        $db->query($sql);
+        foreach ($bind AS $name => $value) {
+            $db->bind(':' . $name, $value);
+            unset($name, $value);
+        }
+        $db->execute();
+        return $db->resultset();
+    }
+
+    public static function transactionStart()
+    {
+        $db = Bootstrap::getDBPDO();
+        return $db->transactionStart();
+    }
+
+    public static function transactionCommit()
+    {
+        $db = Bootstrap::getDBPDO();
+        return $db->transactionCommit();
+    }
+
+    public static function transactionCancel()
+    {
+        $db = Bootstrap::getDBPDO();
+        return $db->transactionCancel();
     }
 
     /*

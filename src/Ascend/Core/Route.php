@@ -12,7 +12,11 @@ class Route
     {
         list($uri, $param, $method) = Request::getRequestUriParsed();
         list($path, $dynamicVariables) = self::dynamicVariables($path, $uri);
-
+        /*
+        echo $uri.'<br />';
+        echo $path.'<br />';
+        echo ' ------------ <BR />';
+        */
         if ($path == $uri && $method == 'GET') {
             self::getControllerByUri($path, $call, $uri, $dynamicVariables);
             exit;
@@ -91,11 +95,14 @@ class Route
 
             http_response_code(200);
             header('Content-Type: text/html');
+            ob_start();
             require_once $pathView;
-            if (Bootstrap::getConfig('debug.script_runtime')) {
+            /*if (Bootstrap::getConfig('debug.script_runtime')) {
                 echo Debug::displayLogTime();
-            }
-            return true;
+            }*/
+            $output = ob_get_contents();
+            ob_end_clean();
+            return $output;
         } else {
             die($path . ' not found');
         }
@@ -135,46 +142,55 @@ class Route
     // Takes path, checks for {?}, and changes {?} to values from uri.
     private static function dynamicVariables($path, $uri)
     {
+        // @todo push this update to framework
+        $dynamicVariables = [];
+
         $pattern = '@\{([a-zA-Z]{1,50})\}@';
         preg_match_all($pattern, $path, $pathMatches);
-        
-        $pattern = '@([0-9]{1,10})@';
-        preg_match_all($pattern, $uri, $uriMatches);
 
-        $dynamicVariables = [];
-        if (count($pathMatches[1]) == count($uriMatches[1]) && count($uriMatches[1]) > 0) {
-            // var_dump($pathMatches[1], $uriMatches[1]);
-            foreach ($pathMatches[1] AS $k => $field) {
-                // echo $field.' = '.$uriMatches[1][$k].'<br />'.PHP_EOL;
-                $dynamicVariables[$field] = $uriMatches[1][$k];
-                $path = str_replace('{'.$field.'}', $uriMatches[1][$k], $path);
-            }
-            
-            /*
-            foreach ($dynVar[0] AS $find) {
-                $path = str_replace($find, $replace, $path);
-            }
-            */
-            /*
-            $u = $uri;
-            $e = preg_split('@[\{|\}]@', $path);
-            var_dump($path, $uri, $e);
-            foreach ($e AS $ek => $ev) {
-                if ($ek % 2 == 0) {
-                    $u = str_replace($ev, ',', $u);
+        $splitPath = explode('/', $path);
+        $splitUri = explode('/', $uri);
+
+        /*
+        echo ' ========================================== <br />'.PHP_EOL;
+        echo $path.'<br />'.PHP_EOL;
+        echo $uri.'<br />'.PHP_EOL;
+        */
+
+        $var = [];
+        $replacePath = '';
+        if (count($splitPath) == count($splitUri) && count($pathMatches[1]) > 0) {
+            // echo '<pre>'; var_dump($splitPath, $splitUri, $pathMatches[1]); echo '</pre>';
+            for ($i = 0; $i < count($splitPath); $i++) {
+                $pattern = '@\{([a-zA-Z]{1,50})\}@';
+                preg_match_all($pattern, $splitPath[$i], $matches);
+                if (isset($matches[1]) && count($matches[1]) > 0) {
+                    $k = $matches[1][0];
+                    $v = $splitUri[$i];
+                    $var[$k] = $v;
+                    $replacePath .= $v . '/';
+                } else {
+                    $replacePath .= $splitPath[$i] . '/';
                 }
-                unset($ek, $ev);
             }
-            $u = substr($u, 1);
-            $dynVal = explode(',', $u);
-            unset($e, $u);
-
-            $path = str_replace($dynVar[0][0], $dynVal[0], $path);
-            */
+            if (count($var) > 0) {
+                /*
+                echo '<pre>bla';
+                var_dump($var);
+                echo '</pre>';
+                */
+                $dynamicVariables = $var;
+            }
+            if (substr($uri, -1, 1) != '/') {
+                $replacePath = substr($replacePath, 0, -1);
+            }
+        } else {
+            $replacePath = $path;
         }
 
-        return [$path, $dynamicVariables];
-        // return [$path, $pathMatches, $dynamicVariables];
+        // echo 'rp: '.$replacePath.'<br />';
+
+        return [$replacePath, $dynamicVariables];
     }
 
     private static function getControllerByUri($path, $call, $uri, $dynamicVariables) // $dynVar, $dynVal)
@@ -227,7 +243,7 @@ class Route
                     trigger_error('Route does not suppore more than 4 dynamic variable. Fix in Route::getControllerByUri!', E_USER_ERROR);
                 */
                 if (count($dynamicVariables) > 0) {
-                    $result = call_user_func_array([$classNamespaceObject,$func], $dynamicVariables);
+                    $result = call_user_func_array([$classNamespaceObject, $func], $dynamicVariables);
                 } else {
                     $rClass = new \ReflectionClass($classNamespace);
                     $method = $rClass->getMethod($func);
