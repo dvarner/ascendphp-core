@@ -130,7 +130,21 @@ class Route
     public static function lock()
     {
         if (Bootstrap::getConfig('lock') === true) {
-            require_once PATH_VIEWS . 'maint.php';
+            if (!isset($_SESSION['_LOCK']['loggedin'])) {
+                if (
+                    isset($_POST['locked_user'])
+                    && isset($_POST['locked_pass'])
+                    && $_POST['locked_user'] == Bootstrap::getConfig('lock_user')
+                    && $_POST['locked_pass'] == Bootstrap::getConfig('lock_pass')
+                ) {
+                    unset($_SESSION['_LOCK']['error']);
+                    $_SESSION['_LOCK']['loggedin'] = true;
+                } else {
+                    $_SESSION['_LOCK']['error'] = 'User/Pass Incorrect!';
+                    require_once PATH_VIEWS . 'locked_login.php';
+                    exit;
+                }
+            }
         }
     }
 

@@ -72,13 +72,13 @@ class Model
 
         if (!isset($this->timestamps)){ $this->timestamps = true; }
         if ($this->timestamps === true) {
-            $fields['created_at'] = 'created_at timestamp null default null';
-            $fields['updated_at'] = 'updated_at timestamp null default null';
+            $fields['created_at'] = 'created_at datetime null default now()';
+            $fields['updated_at'] = 'updated_at datetime null default now()';
         }
 
         if (!isset($this->softDelete)){ $this->softDelete = true; }
         if ($this->softDelete === true) {
-            $fields['deleted_at'] = 'deleted_at timestamp null default null';
+            $fields['deleted_at'] = 'deleted_at datetime null default null';
         }
 
         return $fields;
