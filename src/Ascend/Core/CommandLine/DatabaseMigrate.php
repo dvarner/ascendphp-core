@@ -156,7 +156,7 @@ class DatabaseMigrate extends _CommandLineAbstract
 		  `batch_id` int unsigned NOT NULL,
 		  `model` varchar(255) NOT NULL,
 		  `structure` text NOT NULL,
-		  `created_at` timestamp NOT NULL
+		  `created_at` datetime NOT DEFAULT CURRENT_TIMESTAMP
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci";
 
         $db = Bootstrap::getDBPDO();
