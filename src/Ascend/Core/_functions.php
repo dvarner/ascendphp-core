@@ -1,4 +1,4 @@
-<?php
+<?php namespace Ascend\Core;
 
 function currency($n) {
     return number_format($n, 0,'.',',');
