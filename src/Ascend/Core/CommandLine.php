@@ -72,7 +72,7 @@ class CommandLine extends CommandLineArguments
                         $class = $e[0];
                         $r = call_user_func('\\App\\CommandLine\\' . $class . '::getHelp');
                         self::out($file);
-                        self::out( '  php fw ' . $r);
+                        self::out( '  php ascend ' . $r);
                     }
                 }
                 closedir($dh);
