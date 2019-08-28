@@ -27,7 +27,12 @@ class Session
             // register_shutdown_function('session_write_close');
             if (session_status() == PHP_SESSION_NONE) {
                 // session_name();
-                session_start();
+                try {
+                    @session_start();
+                } catch (\Exception $e) {
+                    echo 'Run migration to created database!<br />';
+                    echo 'Caught exception: ' . $e->getMessage();
+                }
             }
         }
 
