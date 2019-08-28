@@ -1,572 +1,232 @@
 <?php namespace Ascend\Core;
 
-use Ascend\Core\BootStrap;
-use Carbon\Carbon;
-
 class Database
 {
+    protected static $pdo = null;
+    private static $log_queries = false;
 
-    // private static $db = null;
-    // private $bindStore = [];
-    private $db = null;
-    private $sql = [
-        'binds' => [],
-        'select' => '',
-        'table' => '',
-        'join' => [],
-        'where' => [],
-        'string' => '',
-    ];
-    private $lastSQL = [];
-
-    public function __construct()
+    public static function logQueries()
     {
+        self::$log_queries = true;
+    }
+
+    public static function connect()
+    {
+        if (DB_LOG_QUERIES) self::logQueries();
+        $charset = 'utf8mb4';
+        $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . $charset;
+        $options = [
+            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+            \PDO::ATTR_EMULATE_PREPARES => false,
+        ];
         try {
-            $this->db = Bootstrap::getDBPDO(); // new DBPDO(); //$this->_config, $this->_class);
-        } catch (Exception $e) {
-            die('DB Error Connect: ' . $e->getMessage() . PHP_EOL);
+            self::$pdo = new \PDO($dsn, DB_USER, DB_PASS, $options);
+        } catch (\PDOException $e) {
+            // @todo 20190729 Log this instead of throw error if fails in prod
+            throw new \PDOException($e->getMessage(), (int)$e->getCode());
         }
     }
 
-    // *** static starts for chaining *** //
-    public static function table($table)
+    public static function count($sql, $bind = [])
     {
-        $db = Bootstrap::getDB();
-        $db->clearSQLStore();
-        // $db->table = $table; // remove? no longer used?
-        $db->sql['table'] = $table;
-        return $db;
+        self::log($sql, $bind);
+        $stmt = self::$pdo->prepare($sql);
+        $stmt->execute($bind);
+        return $stmt->rowCount();
     }
 
-    // *** Middle chain-rz
-    public function select($select = "*") {
-        $this->sql['select'] = 'SELECT ' . $select . ' FROM ';
-        return $this;
-    }
-    public function join($tableA, $fieldA, $tableB, $fieldB) {
-        $this->sql['join'][] = ' JOIN ' . $tableB . ' ON ' . $tableA . '.' . $fieldA . ' = ' . $tableB . '.' . $fieldB;
-        return $this;
-    }
-    public function leftJoin($tableA, $fieldA, $tableB, $fieldB) {
-        $this->sql['join'][] = ' LEFT JOIN ' . $tableB . ' ON ' . $tableA . '.' . $fieldA . ' = ' . $tableB . '.' . $fieldB;
-        return $this;
-    }
-    public function where($id, $expression, $value = null)
+    public static function query($sql)
     {
-        // $id = 'deleted_at'; $exp = 'is'; $v = 'null';
-        // $id = 'deleted_at'; $exp = 'is not'; $v = 'null';
-        // @todo setup = null to change to is null and != null to is not null; idk if i want to; make cod'rs lazy
-        if ($value == 'null' && !in_array($expression, ['is', 'is not'])) {
-            var_dump(debug_backtrace());
-            trigger_error('SQL Warning: Query has a null set to something other than is or is not!', E_USER_ERROR);
-        }
-        if (is_numeric($value) || $value == 'null') {
-            $this->sql['where'][] = $id . ' ' . $expression . ' ' . $value;
+        self::log($sql);
+        return self::$pdo->query($sql);
+    }
+
+    public static function one($sql, $bind = [])
+    {
+        self::log($sql, $bind);
+        $stmt = self::$pdo->prepare($sql);
+        $stmt->execute($bind);
+        return $stmt->fetch();
+    }
+
+    // $key = id field from the table will be the key of the array
+    //        , if you do this make sure there are no dups... it will override
+    public static function many($sql, $bind = [], $key = false)
+    {
+        self::log($sql, $bind);
+        $stmt = self::$pdo->prepare($sql);
+        $stmt->execute($bind);
+        if ($key === false) {
+            return $stmt->fetchAll();
         } else {
-            $this->sql['where'][] = $id . ' ' . $expression . " '" . $value . "'";
+            $result = [];
+            while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+                $result[$row[$key]] = $row;
+            }
+            return $result;
         }
-
-        return $this;
-    }
-    public function groupBy($field)
-    {
-        $this->sql['groupBy'][] = ' GROUP BY ' . $field;
-        return $this;
-    }
-    public function orderBy($field, $direction = 'asc')
-    {
-        $this->sql['orderBy'][] = ' ORDER BY ' . $field . ' ' . $direction;
-        return $this;
     }
 
-    // *** end of chaining *** //
-    public function get($keyAsId = true)
+    public static function insert($table, $bind)
     {
-        $this->runQueryAndBind();
-        $row = $this->db->resultset($keyAsId);
-        return $row;
-    }
-    public function first()
-    {
-        $this->setSQLLimit(1);
-        $this->runQueryAndBind();
-        $row = $this->db->resultset(false);
-        $row = isset($row[0]) ? $row[0] : null;
-        return $row;
-    }
-
-    // *** other useful functions *** //
-    public function insert($table, $fieldValues)
-    {
-        $this->clearSQLStore();
-
         $fields = '';
         $values = '';
 
         // *** Build insert
-        foreach ($fieldValues AS $name => $value) {
+        foreach ($bind AS $name => $value) {
             $fields .= ($fields == '' ? '' : ', ') . '`' . $name . '`';
             $values .= ($values == '' ? '' : ', ') . ':' . $name;
             unset($name, $value);
         }
-        $this->sql['string'] = 'INSERT INTO ' . $table .
-            ' (' . $fields . ') VALUES (' . $values . ')';
 
-        $this->sql['table'] = $table;
-        $this->sql['binds'] = $fieldValues;
+        $tm = time();
+        $name = 'created_at';
+        $bind[$name] = date('Y-m-d H:i:s', $tm);
+        $fields .= ($fields == '' ? '' : ', ') . '`' . $name . '`';
+        $values .= ($values == '' ? '' : ', ') . ':' . $name;
 
-        // $this->setLastSQL();
+        $name = 'updated_at';
+        $bind[$name] = date('Y-m-d H:i:s', $tm);
+        $fields .= ($fields == '' ? '' : ', ') . '`' . $name . '`';
+        $values .= ($values == '' ? '' : ', ') . ':' . $name;
 
-        // $this->combineSQLIntoSQLString();
-        $this->runQuery();
-        $this->loadBinds();
-        $this->setLastSQL();
-        $this->db->execute();
+        $sql = 'INSERT INTO ' . $table . ' (' . $fields . ') VALUES (' . $values . ')';
+        // echo $sql.'<br />';
+        // var_dump($bind);
 
-        // *** Get inserted id
-        $insert_id = $this->db->lastInsertId();
-        return $insert_id;
+        try {
+            self::log($sql, $bind);
+            self::$pdo->prepare($sql)->execute($bind);
+            return (int)self::$pdo->lastInsertId();
+        } catch (\PDOException $e) {
+            // @todo 20190729 do more with this sql error
+            throw $e;
+            /*
+            $existingkey = "Integrity constraint violation: 1062 Duplicate entry";
+            if (strpos($e->getMessage(), $existingkey) !== FALSE) {
+
+                // Take some action if there is a key constraint violation, i.e. duplicate name
+            } else {
+                throw $e;
+            }
+            */
+        }
     }
-    public function update($table, $update, $where)
+
+    public static function update($table, $bind, $where)
     {
-        $this->clearSQLStore();
-        $this->table = $table;
 
-        $sql = 'UPDATE ' . $this->table . ' SET ';
-        $sqlu = "";
-        foreach ($update AS $k => $v) {
-            $sqlu .= ($sqlu == '' ? '' : ',') . $k . ' = :' . $k;
-        }
-        $sql .= $sqlu;
-        $sqlw = "";
-        foreach ($where AS $k => $v) {
-            $sqlw .= ($sqlw == '' ? '' : ' && ') . $k . ' = :' . $k;
-        }
-        $sql .= " WHERE " . $sqlw;
-        $this->sql['string'] = $sql;
-        $this->db->query($sql);
-
-        $binds = [];
-        // *** Bind fields/values to query
-        foreach ($update AS $name => $value) {
-            $binds[$name] = $value;
+        $sql = 'UPDATE ' . $table . ' SET ';
+        $sqlu = '';
+        foreach ($bind AS $name => $value) {
+            $sqlu .= ($sqlu == '' ? '' : ', ');
+            $sqlu .= $name . ' = :' . $name;
             unset($name, $value);
         }
+        $sqlu .= ' WHERE ';
+        $sqlw = '';
         foreach ($where AS $name => $value) {
-            $binds[$name] = $value;
+            $sqlw .= ($sqlw == '' ? '' : ' AND ');
+            $sqlw .= $name . ' = :' . $name;
             unset($name, $value);
         }
-        $this->sql['binds'] = $binds;
-        $this->loadBinds();
+        $sqlu .= $sqlw;
+        $sql .= $sqlu;
+        $bind = array_merge($bind, $where);
 
-        $this->setLastSQL();
-        $this->db->execute();
-        // $this->db->debugDumpParams();
-    }
-    public function delete($table, $id)
-    {
-        // return $this->deleteSoft($table, $id);
-
-        $sql = 'DELETE FROM ' . $table .
-            ' WHERE id = :id';
-        $this->db->query($sql);
-
-        // *** Bind fields/values to query
-        $this->db->bind(':id', $id);
-        $this->db->execute();
-
-        return true;
-    }
-    public function deleteSoft($table, $id) {
-        $this->table = $table;
-        $update['deleted_at'] = Carbon::now();
-        $where['id'] = $id;
-        $this->update($table, $update, $where);
-    }
-
-    // *** helper functions for cleaner code *** //
-    protected function resetSQLString() {
-        $this->sql['string'] = '';
-    }
-    protected function setSQLStringSelectDefaultIfDoesNotExist() {
-        if (!isset($this->sql['select'])) {
-            $this->sql['select'] = 'SELECT * FROM';
-        }
-    }
-    protected function appendSQLSelectToSQLString() {
-        $this->sql['string'].= $this->sql['select'];
-    }
-    protected function appendSQLTableToSQLString() {
-        $this->sql['string'].= ' ' . $this->sql['table'];
-    }
-    protected function appendSQLJoinToSQLString() {
-        if (isset($this->sql['join'])) {
-            $this->sql['string'].= implode(' ', $this->sql['join']);
-        }
-    }
-    protected function appendSQLWhereToSQLString() {
-        if (isset($this->sql['where'])) {
-            $whereSQL = '';
-            foreach ($this->sql['where'] AS $where) {
-                $whereSQL .= ($whereSQL == '' ? '' : ' && ') . $where;
-            }
-            $this->sql['string'].= ' WHERE ' . $whereSQL;
-        }
-    }
-    protected function appendSQLGroupByToSQLString() {
-        if (isset($this->sql['groupBy'])) {
-            $sql = '';
-            foreach ($this->sql['groupBy'] AS $v) {
-                $sql .= ($sql == '' ? '' : ', ') . $v;
-            }
-            $this->sql['string'].= ' ' . $sql;
-        }
-    }
-    protected function appendSQLOrderByToSQLString() {
-        if (isset($this->sql['orderBy'])) {
-            $sql = '';
-            foreach ($this->sql['orderBy'] AS $v) {
-                $sql .= ($sql == '' ? '' : ', ') . $v;
-            }
-            $this->sql['string'].= ' ' . $sql;
-        }
-    }
-    protected function setSQLLimit($limit)
-    {
-        $this->sql['limit'] = $limit;
-    }
-    protected function appendSQLLimitToSQLString() {
-        $this->sql['string'].= ' ' . (isset($this->sql['limit']) ? 'LIMIT ' . $this->sql['limit'] : '');
-    }
-    protected function combineSQLIntoSQLString() {
-        $this->resetSQLString();
-        $this->setSQLStringSelectDefaultIfDoesNotExist();
-        $this->appendSQLSelectToSQLString();
-        $this->appendSQLTableToSQLString();
-        $this->appendSQLJoinToSQLString();
-        $this->appendSQLWhereToSQLString();
-        $this->appendSQLGroupByToSQLString();
-        $this->appendSQLOrderByToSQLString();
-        $this->appendSQLLimitToSQLString();
-    }
-    protected function runQueryAndBind()
-    {
-        $this->combineSQLIntoSQLString();
-        $this->runQuery();
-        $this->setLastSQL();
-        $this->loadBinds();
-    }
-    protected function clearSQLStore() {
-        $this->sql = [];
-    }
-    protected function runQuery() {
-        $this->db->query($this->sql['string']);
-    }
-    protected function setLastSQL()
-    {
-        $this->lastSQL = $this->sql;
-        if (Bootstrap::getConfig('dev') === true && isset($this->sql['string'])) {
-            $DS = DIRECTORY_SEPARATOR;
-            file_put_contents(PATH_STORAGE . 'log'.$DS.'sql.log', $this->sql['string'] . PHP_EOL, FILE_APPEND | LOCK_EX);
-        }
-    }
-    protected function loadBinds() {
-        if (isset($this->sql['binds']) && is_array($this->sql['binds']) && count($this->sql['binds']) > 0){
-            foreach ($this->sql['binds'] AS $field => $value) {
-                $this->db->bind(':' . $field, $value);
-            }
+        try {
+            self::log($sql, $bind);
+            self::$pdo->prepare($sql)->execute($bind);
+        } catch (\PDOException $e) {
+            // @todo 20190729 do more with this sql error
+            throw $e;
         }
     }
 
-    // *** displays out last sql statement *** //
-    public static function getLastSQL()
-    {
-        $db = Bootstrap::getDB();
-        // return $db->lastSQL['string'];
-        return $db->interpolateQuery($db->lastSQL['string'], isset($db->lastSQL['binds']) ? $db->lastSQL['binds'] : []);
-    }
-    public function getLastSQLString() {
-        // return $this->lastSQL['string'];
-        return $this->interpolateQuery($this->lastSQL['string'], isset($this->lastSQL['binds']) ? $this->lastSQL['binds'] : []);
-    }
-    public function interpolateQuery($query, $params) {
-        $keys = array();
-        $values = $params;
-
-        # build a regular expression for each parameter
-        foreach ($params as $key => $value) {
-            if (is_string($key)) {
-                $keys[] = '/:'.$key.'/';
-            } else {
-                $keys[] = '/[?]/';
-            }
-
-            if (is_string($value))
-                $values[$key] = "'" . $value . "'";
-
-            if (is_array($value))
-                $values[$key] = "'" . implode("','", $value) . "'";
-
-            if (is_null($value))
-                $values[$key] = 'NULL';
-        }
-
-        $query = preg_replace($keys, $values, $query);
-
-        return $query;
-    }
-
-    ///////////////////////////////
-    /*
-    private function build()
+    public static function delete($table, $where)
     {
 
-        $sql = "";
-        if (!isset($this->select)) {
-            $this->select = 'SELECT * FROM ';
-        }
-        if (isset($this->select)) {
-            $sql .= $this->select;
-            unset($this->select);
-        }
-        if (isset($this->table)) {
-            $sql .= $this->table;
-            unset($this->table);
-        }
-        // if (isset($this->join)) { foreach ($this->join AS $v) { $sql.= " " . $v; unset($v); } unset($this->join); }
-        if (isset($this->where)) {
-            $sql .= " WHERE " . implode(" AND ", $this->where);
-            unset($this->where);
-        }
-        // if (isset($this->extra)) { $sql.= ' ' . implode(' ', $this->extra); unset($this->extra); }
-        if (isset($this->orderby)) {
-            $sql .= ' ' . $this->orderby;
-            unset($this->orderby);
-        }
-        if (isset($this->limit)) {
-            $sql .= ' ' . $this->limit;
-            unset($this->limit);
-        }
-
-        // echo $sql . ' :line 206' . RET; exit;
-        if (!isset($this->bindStore)) {
-            $this->bindStore = [];
-        }
-        $this->db->query($sql);
-        $this->lastSQL['sql'] = $sql;
-        $this->lastSQL['bind'] = $this->bindStore;
-        if (isset($this->bindStore) && is_array($this->bindStore) && count($this->bindStore) > 0) {
-            foreach ($this->bindStore AS $v) {
-                // echo 'bind: '.$v[0].' | '.$v[1].'<br />'.RET;
-                $this->db->bind($v[0], $v[1]);
-                unset($v);
-            }
-            unset($this->bindStore, $this->inc);
-        }
-    }
-    public function first($keyAsId = true)
-    {
-        $this->limit = 'LIMIT 1';
-        $this->build();
-        $row = $this->db->resultset($keyAsId);
-        foreach ($row AS $k => $v) {
-            if (is_numeric($k)) {
-                return $row[$k];
-            } else {
-                return $row;
-            }
-            exit;
-        }
-    }
-    public function insert($table, $arr)
-    {
-        $this->table = $table;
-        if (!isset($this->table)) {
-            trigger_error('table() function not set!', E_USER_ERROR);
-        }
-        $insert_id_arr = array();
-        $fields = '';
-        $values = '';
-
-        // *** Build insert
-        foreach ($arr AS $name => $value) {
-            $fields .= ($fields == '' ? '' : ', ') . '`' . $name . '`';
-            $values .= ($values == '' ? '' : ', ') . ':' . $name;
+        $deleted_at = date('Y-m-d H:i:s', time());
+        $sql = "UPDATE " . $table . " SET deleted_at = :deleted_at WHERE ";
+        $sqlw = '';
+        foreach ($where AS $name => $value) {
+            $sqlw .= ($sqlw == '' ? '' : ' AND ');
+            $sqlw .= $name . ' = :' . $name;
             unset($name, $value);
         }
-        $sql = 'INSERT INTO ' . $this->table .
-            ' (' . $fields . ') VALUES (' . $values . ')';
-        $this->db->query($sql);
+        $sql .= $sqlw;
+        $where['deleted_at'] = $deleted_at;
 
-        // *** Bind fields/values to query
-        foreach ($arr AS $name => $value) {
-            $this->db->bind(':' . $name, $value);
+        try {
+            self::log($sql, $where);
+            self::$pdo->prepare($sql)->execute($where);
+        } catch (\PDOException $e) {
+            throw $e;
+        }
+    }
+
+    public static function deletePermanently($table, $where)
+    {
+        $sql = 'DELETE FROM ' . $table . ' WHERE ';
+        $sqlw = '';
+        foreach ($where AS $name => $value) {
+            $sqlw .= ($sqlw == '' ? '' : ' AND ');
+            $sqlw .= $name . ' = :' . $name;
             unset($name, $value);
         }
+        $sql .= $sqlw;
 
-        $this->db->execute();
-        // *** Get inserted id
-        $insert_id = $this->db->lastInsertId();
-        unset($v);
-        // }
-        return $insert_id;
-    }
-    public function where($table, $id, $expression, $value = null)
-    {
-        if (!is_null($value)) {
-            $this->table = $table;
-            $this->inc = (isset($this->inc) ? $this->inc + 1 : 1);
-            if ($expression == 'is' && $value == 'null') {
-                $this->where[] = $table . '.' . $id . ' is null';
-            } elseif ($expression == 'is' && $value == 'not null') {
-                $this->where[] = $table . '.' . $id . ' is not null';
-            } else {
-                $this->where[] = $table . '.' . $id . ' ' . $expression . ' :' . $this->inc;
-                $this->bindStore[] = array(':' . $this->inc, $value);
+        if (count($where) > 0) {
+            try {
+                self::log($sql, $where);
+                self::$pdo->prepare($sql)->execute($where);
+            } catch (\PDOException $e) {
+                throw $e;
             }
         } else {
-            $value = $expression;
-            $expression = $id;
-            $id = $table;
-            $this->inc = (isset($this->inc) ? $this->inc + 1 : 1);
-            if ($expression == 'is' && $value == 'null') {
-                $this->where[] = $id . ' is null';
-            } elseif ($expression == 'is' && $value == 'not null') {
-                $this->where[] = $id . ' is not null';
-            } else {
-                $this->where[] = $id . ' ' . $expression . ' :' . $this->inc;
-                $this->bindStore[] = array(':' . $this->inc, $value);
+            // @todo 20190724 Log this or do something different
+            die('Cant do this, deletePermanently() without a $where');
+        }
+    }
+
+    public static function table_exists($table)
+    {
+        $sql = "SHOW TABLES LIKE '{$table}'";
+        self::log($sql, []);
+        $results = self::$pdo->query($sql);
+        return $results->rowCount() > 0 ? true : false;
+    }
+
+    public static function log($sql, $binds = [])
+    {
+        if (self::$log_queries) {
+            $save_binds = '';
+            if (is_array($binds) && count($binds) > 0) {
+                $save_binds = RET . 'BINDS: ' . TAB . json_encode($binds);
+            }
+            $file = PATH_LOG . 'sql.log';
+            $datetime = date('Y-m-d H:i:s');
+            file_put_contents($file, $datetime . TAB . $sql . $save_binds . RET, FILE_APPEND | LOCK_EX);
+
+            // Log queries which dont have deleted_at b/c we might need to add it to them
+            $pattern = '#^INSERT|UPDATE|DELETE#i';
+            preg_match($pattern, $sql, $matches);
+            if (isset($matches) && is_array($matches) && count($matches) == 0) {
+                $pattern = '#^SELECT.*WHERE.*deleted_at.*$#i';
+                preg_match($pattern, $sql, $matches);
+                if (isset($matches) && is_array($matches) && count($matches) == 0) {
+                    if (false === ($a = strpos($sql, ' id ='))) {
+                        $file = PATH_LOG . 'sql.no-deleted-at.log';
+                        $datetime = date('Y-m-d H:i:s');
+                        file_put_contents($file, $datetime . TAB . $sql . $save_binds . RET, FILE_APPEND | LOCK_EX);
+                    }
+                }
             }
         }
-
-        return $this;
     }
-    public function update($table, $update, $where)
-    {
-        $this->table = $table;
-
-        $sql = 'UPDATE ' . $this->table . ' SET ';
-        $sqlu = "";
-        foreach ($update AS $k => $v) {
-            $sqlu .= ($sqlu == '' ? '' : ',') . $k . ' = :' . $k;
-        }
-        // $sqlu.= ',updated_at = "' . \Carbon\Carbon::now() . '"';
-        $sql .= $sqlu;
-        $sqlw = "";
-        foreach ($where AS $k => $v) {
-            $sqlw .= ($sqlw == '' ? '' : ' && ') . $k . ' = :' . $k;
-        }
-        $sql .= " WHERE " . $sqlw;
-        // var_dump($sql,$update, $where); exit;
-        $this->db->query($sql);
-
-        // *** Bind fields/values to query
-        foreach ($update AS $name => $value) {
-            $this->db->bind(':' . $name, $value);
-            unset($name, $value);
-        }
-        foreach ($where AS $name => $value) {
-            $this->db->bind(':' . $name, $value);
-            unset($name, $value);
-        }
-
-        // echo $this->interpolateQuery($sql, array_merge($update, $where));exit;
-
-        $this->db->execute();
-        // $this->db->debugDumpParams();
-    }
-    public function delete($table, $id)
-    {
-        // return $this->deleteSoft($table, $id);
-
-        $sql = 'DELETE FROM ' . $table .
-            ' WHERE id = :id';
-        $this->db->query($sql);
-
-        // *** Bind fields/values to query
-        $this->db->bind(':id', $id);
-        $this->db->execute();
-
-        return true;
-    }
-    public function deleteSoft($table, $id) {
-        $this->table = $table;
-        $update['deleted_at'] = \Carbon\Carbon::now();
-        $where['id'] = $id;
-        $this->update($table, $update, $where);
-    }
-    public function orderBy($id, $by = 'asc') {
-        // die('orderBy Incomplete!');
-
-        if(!isset($this->orderby)){ $this->orderby = ''; }
-
-        $sql = ($this->orderby != '' ? ',' : ' ORDER BY ');
-        $sql.= '' .
-            $id . ' ' . ($by == 'asc' ? 'asc' : 'desc');
-        $this->orderby.= $sql;
-        return $this;
-    }
-    public function getLastSQL()
-    {
-        echo '<pre>';
-        var_dump($this->lastSQL);
-    }
-    public function interpolateQuery($query, $params) {
-        $keys = array();
-        $values = $params;
-
-        # build a regular expression for each parameter
-        foreach ($params as $key => $value) {
-            if (is_string($key)) {
-                $keys[] = '/:'.$key.'/';
-            } else {
-                $keys[] = '/[?]/';
-            }
-
-            if (is_string($value))
-                $values[$key] = "'" . $value . "'";
-
-            if (is_array($value))
-                $values[$key] = "'" . implode("','", $value) . "'";
-
-            if (is_null($value))
-                $values[$key] = 'NULL';
-        }
-
-        $query = preg_replace($keys, $values, $query);
-
-        return $query;
-    }
-    */
 }
-/*
 
-// comment out __construct() to test the below way without the framework
-Bootstrap::initDBPDO(); // <-- user/pass in here
-Bootstrap::initDB();
+class DB extends Database {}
 
-$rows = Database::table('users')->get();
-echo count($rows) . ': ' . Database::getLastSQL() . PHP_EOL; // var_dump($rows);
-
-$row = Database::table('users')->first();
-echo count($row) . ': ' . Database::getLastSQL() . PHP_EOL; // var_dump($row);
-
-$rows = Database::table('users')->where('id', '=', 8)->get();
-echo count($rows) . ': ' . Database::getLastSQL() . PHP_EOL; // var_dump($rows);
-$d = new Database;
-$d->insert('users', ['user' => 'tetest2st']);
-echo 'insert: ' . $d->getLastSQLString() . PHP_EOL; // var_dump($rows);
-
-$rows = Database::table('users')->where('created_at', 'is', 'null')->get();
-echo count($rows) . ': ' . Database::getLastSQL() . PHP_EOL; // var_dump($rows);
-
-$rows = Database::table('users')->where('created_at', 'is not', 'null')->get();
-echo count($rows) . ': ' . Database::getLastSQL() . PHP_EOL; // var_dump($rows);
-
-$rows = Database::table('users')
-    ->select('users_data.*')
-    ->join('users', 'id', 'users_data', 'user_id')
-    ->where('users.created_at', 'is not', 'null')
-    ->get();
-echo count($rows) . ': ' . Database::getLastSQL() . PHP_EOL; // var_dump($rows);
-*/
+DB::connect();

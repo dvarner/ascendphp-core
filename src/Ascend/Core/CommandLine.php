@@ -1,105 +1,87 @@
 <?php namespace Ascend\Core;
 
-use Ascend\Core\Debug;
-use Ascend\Core\CommandLineArguments;
+/**
+ * Class CommandLine
+ * @package Ascend\Core
+ *
+ * CommandLineArguments and self::getArgv() is defined inside "ascend" file in root folder
+ */
 
-class CommandLine
+class CommandLine extends CommandLineArguments
 {
-	private $cmdArguments = null;
-	
     public static function init()
     {
-        $DS = DIRECTORY_SEPARATOR;
-        $PCmd = PATH_PROJECT . 'vendor'.$DS.'dvarner'.$DS.'ascendphp-core'.
-            $DS.'src'.$DS.'Ascend'.$DS.'Core'.$DS.'CommandLine'.$DS;
-		$argv = CommandLineArguments::getArgv();
-		$cmd = isset($argv[1]) ? $argv[1] : null;
-		// 2+ arguments.... figure out later
+        $args = self::getArgv();
+        $service = null;
+        $method = null;
+        if (count($args) == 2) list($ignore, $service) = $args;
+        if (count($args) == 3) list($ignore, $service, $method) = $args;
 
-		$output = '';
-		$output.= 'PHP Version: ' . phpversion() . RET;
-		$output.= 'Help! Command not found!.' . RET;
-		$output.= 'Here is a list of commands available:' . RET . RET;
-
-		require_once $PCmd . '_CommandLineAbstract.php';
-
-		// Get Framework specific Command lines
-        $listOfCommands = [];
-		$path = $PCmd;
-		$cdir = scandir($path); 
-		foreach ($cdir as $key => $value) { 
-			if (!in_array($value, array(".", ".."))) { 
-				if (
-					!is_dir($path . DIRECTORY_SEPARATOR . $value)
-					&&
-					'_' != substr($value, 0, 1)
-				) { 
-                /*
-                echo 'A'.RET;
-                echo $cmd.RET;
-                echo $path.RET;
-                echo $value.RET;
-                echo RET;
-                */
-					$listOfCommands[] = self::getEachModel($cmd, $path, $value);
-				}
-			} 
-		}
-
-		// Get App specific Command Lines
-        $path = PATH_APP_COMMANDLINE;
-        $cdir = scandir($path);
-        foreach ($cdir as $key => $value) {
-            if (!in_array($value, array(".", ".."))) {
-                if (
-                    !is_dir($path . DIRECTORY_SEPARATOR . $value)
-                    &&
-                    '_' != substr($value, 0, 1)
-                ) {
-                /*
-                echo 'B'.RET;
-                echo $cmd.RET;
-                echo $path.RET;
-                echo $value.RET;
-                */
-                echo RET;
-                    $listOfCommands[] = self::getEachModel($cmd, $path, $value);
+        if (!is_null($service)) {
+            $dir = PATH_COMMANDLINE;
+            if (is_dir($dir)) {
+                if ($dh = opendir($dir)) {
+                    while (($file = readdir($dh)) !== false) {
+                        $pattern = '@^([a-zA-Z0-9-_]{1,100})CommandLine\.php$@'; //
+                        preg_match($pattern, $file, $matches);
+                        if (filetype($dir . $file) == 'file' && count($matches) > 0) {
+                            $e = explode('.',$file);
+                            $class = $e[0];
+                            $commandline_name = call_user_func('\\App\\CommandLine\\' . $class . '::getCommand');
+                            if ($service == $commandline_name) {
+                                if (!isset($method)) {
+                                    $run = call_user_func('\\App\\CommandLine\\' . $class . '::run');
+                                } else{
+                                    $run = call_user_func('\\App\\CommandLine\\' . $class . '::run', $method);
+                                }
+                                self::out($run);
+                                exit;
+                            }
+                        }
+                    }
+                    closedir($dh);
                 }
             }
-        }
-
-        sort($listOfCommands);
-        foreach ($listOfCommands as $v) {
-            $output .= $v . RET;
-        }
-		
-		echo $output;
-		exit;
-    }
-	
-	private static function getEachModel($cmd, $path, $value) {
-		$output = '';
-		// $output.= 'filename: ' . $path . $value . RET;
-		
-		require_once $path . $value;
-		
-		$className = str_replace('.php', '', $value);
-        if (false !== strpos($path,'vendor')) {
-            $className = '\\' . 'Ascend' . '\\' . 'Core' . '\\' . 'CommandLine' . '\\' . $className;
+            self::out();
+            self::out('No Command Line found by that name!');
+            self::out('List of available command lines:');
+            self::out();
+            self::availableCommandLines();
+            self::out();
+            self::out();
         } else {
-            $className = '\\' . 'App' . '\\' . 'CommandLine' . '\\' . $className;
+            self::out();
+            self::out('No Command Line command passed!');
+            self::out('List of available command lines:');
+            self::out();
+            self::availableCommandLines();
+            self::out();
+            self::out();
         }
-		
-		$n = new $className;
-		
-		if($n->getCommand() == $cmd) {
-			$n->run(); exit;
-		}
-		
-		$output.= $n->getCommand() . ' - ' . $n->getName();
-		
-		unset($className, $n);
-		
-		return $output;
-	}
+    }
+
+    private static function availableCommandLines() {
+        $dir = PATH_COMMANDLINE;
+        if (is_dir($dir)) {
+            if ($dh = opendir($dir)) {
+                while (($file = readdir($dh)) !== false) {
+                    $pattern = '@^([a-zA-Z0-9-_]{1,100})CommandLine\.php$@'; //
+                    preg_match($pattern, $file, $matches);
+                    if (filetype($dir . $file) == 'file' && count($matches) > 0) {
+                        $e = explode('.',$file);
+                        $class = $e[0];
+                        $r = call_user_func('\\App\\CommandLine\\' . $class . '::getHelp');
+                        self::out($file);
+                        self::out( '  php fw ' . $r);
+                    }
+                }
+                closedir($dh);
+            }
+        }
+    }
+
+    private static function out($msg = '')
+    {
+        echo $msg . PHP_EOL;
+    }
 }
