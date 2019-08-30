@@ -1,5 +1,21 @@
 <?php namespace Ascend\Core;
 
+function file2code_example($file) {
+    if (file_exists($file)) {
+        // PATH_MODELS . 'Example.php'
+        $content = file_get_contents($file);
+        $content_cleaned = htmlentities($content);
+        $per_line = explode(RET,$content_cleaned);
+        $code_display = '';
+        foreach ($per_line AS $line) {
+            $code_display .= '<span>' . $line . '</span>';
+        }
+        return $code_display;
+    } else {
+        return 'File not found!';
+    }
+}
+
 function currency($n) {
     return number_format($n, 0,'.',',');
 }
