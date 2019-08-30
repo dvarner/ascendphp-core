@@ -21,7 +21,7 @@ class CommandLineWrapper
         return static::$help;
     }
 
-    private static function out($msg = '')
+    protected static function out($msg = '')
     {
         echo $msg . PHP_EOL;
     }
