@@ -12,19 +12,22 @@ class Route
         return $uri;
     }
 
-    public static function view($uri, $class, $method)
+    public static function view($uri, $class, $method, $module = null)
     {
+        if (!is_null($module)) {
+            $module = '\\Ascend\\' . $module . '\\';
+        }
         if (self::getRequestMethod() == 'GET') {
             $class = $class . 'Controller';
             if ($uri == self::getURI()) {
-                $class = 'App\\Controller\\' . $class;
+                $class = $module . 'App\\Controller\\' . $class;
                 call_user_func(array($class, $method));
                 exit;
             }
             preg_match('@^' . $uri . '$@', self::getURI(), $matches);
             if (isset($matches[1])) {
                 unset($matches[0]);
-                $class = 'App\\Controller\\' . $class;
+                $class = $module . 'App\\Controller\\' . $class;
                 call_user_func(array($class, $method), $matches);
                 exit;
             }
