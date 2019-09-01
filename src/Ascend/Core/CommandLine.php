@@ -6,7 +6,6 @@
  *
  * CommandLineArguments and self::getArgv() is defined inside "ascend" file in root folder
  */
-
 class CommandLine extends CommandLineArguments
 {
     public static function init()
@@ -25,14 +24,38 @@ class CommandLine extends CommandLineArguments
                         $pattern = '@^([a-zA-Z0-9-_]{1,100})CommandLine\.php$@'; //
                         preg_match($pattern, $file, $matches);
                         if (filetype($dir . $file) == 'file' && count($matches) > 0) {
-                            $e = explode('.',$file);
+                            $e = explode('.', $file);
                             $class = $e[0];
                             $commandline_name = call_user_func('\\App\\CommandLine\\' . $class . '::getCommand');
                             if ($service == $commandline_name) {
                                 if (!isset($method)) {
                                     $run = call_user_func('\\App\\CommandLine\\' . $class . '::run');
-                                } else{
+                                } else {
                                     $run = call_user_func('\\App\\CommandLine\\' . $class . '::run', $method);
+                                }
+                                self::out($run);
+                                exit;
+                            }
+                        }
+                    }
+                    closedir($dh);
+                }
+            }
+            $dir = PATH_PROJECT . ASCENDPHP_VENDOR_PATH . 'Ascend' . DS . 'Core' . DS . 'CommandLine' . DS;
+            if (is_dir($dir)) {
+                if ($dh = opendir($dir)) {
+                    while (($file = readdir($dh)) !== false) {
+                        $pattern = '@^([a-zA-Z0-9-_]{1,100})CommandLine\.php$@'; //
+                        preg_match($pattern, $file, $matches);
+                        if (filetype($dir . $file) == 'file' && count($matches) > 0) {
+                            $e = explode('.', $file);
+                            $class = $e[0];
+                            $commandline_name = call_user_func('\\Ascend\\Core\\CommandLine\\' . $class . '::getCommand');
+                            if ($service == $commandline_name) {
+                                if (!isset($method)) {
+                                    $run = call_user_func('\\Ascend\\Core\\CommandLine\\' . $class . '::run');
+                                } else {
+                                    $run = call_user_func('\\Ascend\\Core\\CommandLine\\' . $class . '::run', $method);
                                 }
                                 self::out($run);
                                 exit;
@@ -60,7 +83,8 @@ class CommandLine extends CommandLineArguments
         }
     }
 
-    private static function availableCommandLines() {
+    private static function availableCommandLines()
+    {
         $dir = PATH_COMMANDLINE;
         if (is_dir($dir)) {
             if ($dh = opendir($dir)) {
@@ -68,11 +92,28 @@ class CommandLine extends CommandLineArguments
                     $pattern = '@^([a-zA-Z0-9-_]{1,100})CommandLine\.php$@'; //
                     preg_match($pattern, $file, $matches);
                     if (filetype($dir . $file) == 'file' && count($matches) > 0) {
-                        $e = explode('.',$file);
+                        $e = explode('.', $file);
                         $class = $e[0];
                         $r = call_user_func('\\App\\CommandLine\\' . $class . '::getHelp');
                         self::out($file);
-                        self::out( '  php ascend ' . $r);
+                        self::out('  php ascend ' . $r);
+                    }
+                }
+                closedir($dh);
+            }
+        }
+        $dir = PATH_PROJECT . ASCENDPHP_VENDOR_PATH . 'Ascend' . DS . 'Core' . DS . 'CommandLine' . DS;
+        if (is_dir($dir)) {
+            if ($dh = opendir($dir)) {
+                while (($file = readdir($dh)) !== false) {
+                    $pattern = '@^([a-zA-Z0-9-_]{1,100})CommandLine\.php$@'; //
+                    preg_match($pattern, $file, $matches);
+                    if (filetype($dir . $file) == 'file' && count($matches) > 0) {
+                        $e = explode('.', $file);
+                        $class = $e[0];
+                        $r = call_user_func('\\Ascend\\Core\\CommandLine\\' . $class . '::getHelp');
+                        self::out($file);
+                        self::out('  php ascend ' . $r);
                     }
                 }
                 closedir($dh);
