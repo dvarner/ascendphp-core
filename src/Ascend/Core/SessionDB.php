@@ -92,9 +92,9 @@ class SessionDB implements \SessionHandlerInterface
             $stmt->execute($bind);
         } else {
             $this->error_log('Session write() -> Insert!');
-            $sql = "INSERT INTO {$this->table} SET user_id = 0, session_id = :session_id, session_expires = :session_expires, session_data = :session_data, created_at = :created_at, updated_at = :updated_at";
+            $sql = "INSERT INTO {$this->table} SET user_id = :user_id, session_id = :session_id, session_expires = :session_expires, session_data = :session_data, created_at = :created_at, updated_at = :updated_at";
             $stmt = $this->pdo->prepare($sql);
-            $bind = ['session_id' => $session_id, 'session_expires' => $datetime_new, 'session_data' => $data, 'created_at' => $datetime, 'updated_at' => $datetime];
+            $bind = ['user_id' => null, 'session_id' => $session_id, 'session_expires' => $datetime_new, 'session_data' => $data, 'created_at' => $datetime, 'updated_at' => $datetime];
             $stmt->execute($bind);
         }
 
@@ -187,29 +187,41 @@ class SessionDB implements \SessionHandlerInterface
         // return value should be true for success or false for failure
         // ...
     }
-    /*
-    public function updateUserId($userId, $sessionId)
+
+    public static function getSessionID() {
+        return session_id();
+    }
+
+    public function getCurrent()
     {
         $this->error_log_split();
+        $session_id = self::getSessionId();
+        $sql = "SELECT * FROM {$this->table} WHERE session_id = :session_id";
+        $stmt = $this->pdo->prepare($sql);
+        $bind = ['session_id' => $session_id];
+        $this->error_log($sql);
+        $this->error_log(varDumpToString($bind));
+        $stmt->execute($bind);
+        $row = $stmt->fetch();
+        $this->error_log(varDumpToString($row));
+        return $row;
+    }
 
-        $arr['options'] = array(
-            \PDO::ATTR_PERSISTENT => true, // Sets to persistent. Increase performance by checking if already connected.
-            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION // This allows handling errors gracefully
-        );
-        $dsn = $this->db_type . ':host=' . $this->db_host . ';dbname=' . $this->db_name;
-        $pdo = new\PDO($dsn, $this->db_user, $this->db_pass, $arr['options']);
-        $this->error_log(varDumpToString($pdo));
-
-        $sql = "UPDATE {$this->table} SET user_id = :userId WHERE session_id = :sessionId";
-        $stmt = $pdo->prepare($sql);
-        $bind = ['userId' => $userId, 'sessionId' => $sessionId];
+    public function updateUserId($user_id = null)
+    {
+        $this->error_log_split();
+        $session_id = session_id();
+        $sql = "UPDATE {$this->table} SET user_id = :user_id WHERE session_id = :session_id";
+        $stmt = $this->pdo->prepare($sql);
+        $bind = ['user_id' => $user_id, 'session_id' => $session_id];
         $this->error_log($sql);
         $this->error_log(varDumpToString($bind));
         $stmt->execute($bind);
         $row = $stmt->rowCount();
         $this->error_log(varDumpToString($row));
+        return $row;
     }
-
+    /*
     public function deleteUserId($userId)
     {
         $this->error_log_split();

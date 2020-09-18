@@ -2,8 +2,7 @@
 
 class Session
 {
-
-    private static $db_session = null;
+    private static object $db_session;
 
     public static function getSessionDB()
     {
@@ -78,10 +77,24 @@ class Session
         }
     }
 
+    public static function clear() {
+        foreach ($_SESSION AS $k => $v) {
+           self::delete($k);
+        }
+    }
+
     public static function destroy() {
         $id = session_id();
         self::$db_session->destroy($id);
         // exit;
+    }
+
+    public static function getCurrent() {
+        return self::$db_session->getCurrent();
+    }
+
+    public static function updateUserIdForCurrentSession($user_id = null) {
+        return self::$db_session->updateUserId($user_id);
     }
 
     public static function getErrorString() {

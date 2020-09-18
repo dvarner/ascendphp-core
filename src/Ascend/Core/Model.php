@@ -13,7 +13,12 @@ class Model extends ModelChain
 
     public static function getFields()
     {
-        return static::$fields;
+        return static::$fields ?? [];
+    }
+
+    public static function getForeignKeys()
+    {
+        return static::$foreign_keys ?? [];
     }
 
     public static function getSeedsSkip()
@@ -45,7 +50,11 @@ class Model extends ModelChain
         CREATE TABLE IF NOT EXISTS `" . self::getTableName() . "` (id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY{$sql_fields}{$add_dates_sql})
         ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci
         ";
-        self::$pdo->prepare($sql)->execute();
+        try {
+            self::$pdo->prepare($sql)->execute();
+        } catch(\Exception $e) {
+            var_dump($sql, $e);
+        }
         /*
         $sql = "ALTER TABLE `".self::getTableName()."` ADD PRIMARY KEY (`id`);";
         self::$pdo->prepare($sql)->execute();
@@ -69,6 +78,17 @@ class Model extends ModelChain
         return parent::update($table, $binds, $where);
     }
 
+    public static function restore($where, $empty = null)
+    {
+        $table = self::getTableName();
+        if (is_numeric($where)) {
+            $id = $where;
+            unset($where);
+            $where['id'] = $id;
+        }
+        return parent::restore($table, $where);
+    }
+
     public static function delete($where, $empty = null)
     {
         $table = self::getTableName();
@@ -80,10 +100,10 @@ class Model extends ModelChain
         return parent::delete($table, $where);
     }
 
-    public static function getById($id)//, $is_deleted = false)
+    public static function getById($id, $is_deleted = false)
     {
         $sql = "SELECT * FROM " . self::getTableName() . " WHERE id = :id";
-        // if ($is_deleted) $sql .= " AND deleted_at is null";
+        if ($is_deleted) $sql .= " AND deleted_at is null";
         return self::one($sql, ['id' => $id]);
     }
 
