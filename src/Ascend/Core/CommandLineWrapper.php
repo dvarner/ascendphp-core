@@ -2,9 +2,9 @@
 
 class CommandLineWrapper
 {
-    protected static $command = '';
-    protected static $name = '';
-    protected static $help = '';
+    protected static string $command = '';
+    protected static string $name = '';
+    protected static string $help = '';
 
     public static function getCommand()
     {

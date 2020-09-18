@@ -144,6 +144,25 @@ class Database
         }
     }
 
+    public static function restore($table, $where)
+    {
+        $sql = "UPDATE " . $table . " SET deleted_at = NULL WHERE ";
+        $sqlw = '';
+        foreach ($where AS $name => $value) {
+            $sqlw .= ($sqlw == '' ? '' : ' AND ');
+            $sqlw .= $name . ' = :' . $name;
+            unset($name, $value);
+        }
+        $sql .= $sqlw;
+
+        try {
+            self::log($sql, $where);
+            self::$pdo->prepare($sql)->execute($where);
+        } catch (\PDOException $e) {
+            throw $e;
+        }
+    }
+
     public static function delete($table, $where)
     {
 

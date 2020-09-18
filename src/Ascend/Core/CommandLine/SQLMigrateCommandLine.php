@@ -6,21 +6,43 @@ use Ascend\Core\Database;
 
 class SQLMigrateCommandLine extends CommandLineWrapper
 {
-    protected static $command = 'sql:migrate';
-    protected static $name = 'Migrate SQL modules';
-    protected static $help = 'sql:migrate [rollback]';
+    protected static string $command = 'sql:migrate';
+    protected static string $name = 'Migrate SQL modules';
+    protected static string $help = 'sql:migrate                    Runs next set of Model changes' . PHP_EOL .
+    '             sql:migrate rollback                  Revert tables back 1 migration' . PHP_EOL .
+    '             sql:migrate destroy:YYYYMMDD          Removes all tables';
     protected static $next_batch_id = 0;
+    private static $current_migration_tables = [];
 
     public static function run($arguments = null)
     {
+        $found = false;
         if (is_null($arguments)) {
+            $found = true;
+            self::out('');
             self::out(' >> Start << ');
+            Database::one('set foreign_key_checks=0');
             self::migrate();
+            Database::one('set foreign_key_checks=1');
             self::out(' >> Complete <<');
         } else {
             if ($arguments == 'rollback') {
+                $found = true;
+                Database::one('set foreign_key_checks=0');
                 self::rollback();
+                Database::one('set foreign_key_checks=1');
             }
+            if ($arguments == 'destroy:' . date('Ymd', time())) {
+                $found = true;
+                Database::one('set foreign_key_checks=0');
+                self::destroy();
+                Database::one('set foreign_key_checks=1');
+            }
+        }
+
+        if (!$found) {
+            self::out('');
+            self::out('"sql:migrate" command incorrectly formatted');
         }
     }
 
@@ -42,10 +64,11 @@ class SQLMigrateCommandLine extends CommandLineWrapper
                         list($model, $ext) = explode('.', $file);
                         if ($ext == 'php' && $model != 'Migration') {
                             $table = call_user_func('\\App\\Model\\' . $model . '::getTableName');
-                            if (!Database::table_exists($table)) {
-                                self::createAndSeedModel($model);
-                            } else {
+                            // $current_migration_tables
+                            if (Database::table_exists($table) && in_array($table, self::$current_migration_tables)) {
                                 self::alterModel($model);
+                            } else {
+                                self::createAndSeedModel($model);
                             }
                         }
                     }
@@ -73,18 +96,66 @@ class SQLMigrateCommandLine extends CommandLineWrapper
         }
     }
 
+    private static function destroy()
+    {
+        $dir = PATH_MODELS;
+        if (is_dir($dir)) {
+            if ($dh = opendir($dir)) {
+                self::out('');
+                self::out('Run destroy -> DROP THE FOLLOWING TABLES');
+                while (($file = readdir($dh)) !== false) {
+                    if (filetype($dir . $file) == 'file' && $file != '.' && $file != '..') {
+                        list($model, $ext) = explode('.', $file);
+                        if ($ext == 'php') {
+                            $table = call_user_func('\\App\\Model\\' . $model . '::getTableName');
+                            if (Database::table_exists($table)) {
+                                Database::one('DROP TABLE ' . $table);
+                                self::out('Model: '.$model);
+                            }
+                        }
+                    }
+                }
+                self::out('Process Complete');
+                closedir($dh);
+            }
+        }
+    }
+
     private static function createAndSeedModel($model)
     {
-        $fields = call_user_func('\\App\\Model\\' . $model . '::getFields');
-        self::out('Create Model: ' . $model);
+        $create_table = false;
 
-        $r = call_user_func('\\App\\Model\\' . $model . '::create', $fields);
+        $table_name = call_user_func('\\App\\Model\\' . $model . '::getTableName');
+        if (!Database::table_exists($table_name)) {
+            $create_table = true;
+            self::$current_migration_tables[] = $model;
+            self::out('Create Model: ' . $model);
+            $fields = call_user_func('\\App\\Model\\' . $model . '::getFields');
+            call_user_func('\\App\\Model\\' . $model . '::create', $fields);
+            self::saveMigrationRow(self::$next_batch_id, $model, $fields);
+        }
 
-        self::saveMigrationRow(self::$next_batch_id, $model, $fields);
+        $foreign_keys = call_user_func('\\App\\Model\\' . $model . '::getForeignKeys');
+        if (is_array($foreign_keys) && count($foreign_keys) > 0) {
+            $table_name = call_user_func('\\App\\Model\\' . $model . '::getTableName');
+            foreach ($foreign_keys AS $foreign_key => $v) {
+                $foreign_table_name = call_user_func('\\App\\Model\\' . $v['model'] . '::getTableName');
+                if (!Database::table_exists($foreign_table_name)) {
+                    // $foreign_fields = call_user_func('\\App\\Model\\' . $v['model'] . '::getFields');
+                    // call_user_func('\\App\\Model\\' . $v['model'] . '::create', $foreign_fields);
+                    self::createAndSeedModel($v['model']);
+                }
+                $sql = 'ALTER TABLE ' . $table_name . ' ADD FOREIGN KEY (' . $foreign_key . ') REFERENCES ' . $foreign_table_name . '(' . $v['field'] . ')';
+                self::out($sql);
+                Database::query($sql);
+                unset($foreign_key, $v);
+            }
+        }
 
         $seeds = call_user_func('\\App\\Model\\' . $model . '::getSeeds');
         $seeds_skip = call_user_func('\\App\\Model\\' . $model . '::getSeedsSkip');
-        if (!is_null($seeds) && is_array($seeds) && count($seeds) > 0 && $seeds_skip === false) {
+        if ($create_table && !is_null($seeds) && is_array($seeds) && count($seeds) > 0 && $seeds_skip === false) {
+            self::out('Seed Model: ' . $model);
             if (isset($seeds['file'])) {
                 $csv_content = file_get_contents(PATH_STORAGE . $seeds['file']);
                 $csv_content = str_replace("\r",'',$csv_content);
@@ -121,10 +192,11 @@ class SQLMigrateCommandLine extends CommandLineWrapper
         // self::out('### COMPARE ###');
         // self::out($migration['structure']);
         // self::out($structure_current_json);
-        if ($migration['structure'] != $structure_current_json) {
+        if (isset($migration['structure']) && $migration['structure'] === $structure_current_json) {
+        } else {
             self::out('Alter Model: ' . $model);
             self::out('Next Batch ID: ' . self::$next_batch_id);
-            $structure_current = json_decode($migration['structure'], true);
+            $structure_current = isset($migration['structure']) ? json_decode($migration['structure'], true) : [];
             $structure_new = json_decode($structure_current_json, true);
             // var_dump('current:',$structure_current,'new:',$structure_new);
             if (is_null($structure_current)) $structure_current = [];

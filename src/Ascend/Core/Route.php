@@ -12,6 +12,26 @@ class Route
         return $uri;
     }
 
+    public static function basicAuthHeader() {
+        if (BASIC_AUTH_HEADER) {
+            header('Cache-Control: no-cache, must-revalidate, max-age=0');
+            // echo '<pre>'; var_dump($_SERVER); exit;
+            $has_supplied_credentials = !(empty($_SERVER['PHP_AUTH_USER']) && empty($_SERVER['PHP_AUTH_PW']));
+            $is_not_authenticated = (
+                !$has_supplied_credentials ||
+                $_SERVER['PHP_AUTH_USER'] !== BASIC_AUTH_HEADER_USER ||
+                $_SERVER['PHP_AUTH_PW']   !== BASIC_AUTH_HEADER_PASS
+            );
+            if ($is_not_authenticated) {
+                header('HTTP/1.1 401 Authorization Required');
+                header('WWW-Authenticate: Basic realm="Access denied"');
+                // echo 'Access Denied!';
+                // unset($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']);
+                exit;
+            }
+        }
+    }
+
     public static function view($uri, $class, $method, $module = null)
     {
         if (!is_null($module)) {
@@ -48,7 +68,7 @@ class Route
             unset($matches[0]);
             $class = 'App\\Controller\\' . $class;
             $r = call_user_func(array($class, $method), $matches);
-            // header('Content-Type: application/json');
+            // header('Content-Type: application/json'); // @todo 200828 find out why we dont need this...
             echo json_encode($r, true);
             exit;
         }
@@ -122,10 +142,9 @@ class Route
         return $output;
     }
 
-    public static function display404()
+    public static function display404($template_file = '_template.php', $tpl = [], $replace_variable = 'container')
     {
         header("HTTP/1.0 404 Not Found");
-        $tpl = [];
         $html = '';
         $html.= '<center>';
         $html.= "<h1>404 Not Found</h1>";
@@ -133,7 +152,7 @@ class Route
         $html.= '</center>';
         // @todo uncomment and make work if user wants
         //$tpl['is_logged_in'] = User::isLoggedIn();
-        $tpl['container'] = $html;
-        echo View::html('_template.php', $tpl);
+        $tpl[$replace_variable] = $html;
+        echo View::html($template_file, $tpl);
     }
 }
