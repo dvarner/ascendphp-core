@@ -1,0 +1,3 @@
+/opt/cpanel/ea-php73/root/usr/bin/php ./phpunit --bootstrap vendor/autoload.php App/Test/TestTest.php
+
+/opt/cpanel/ea-php73/root/usr/bin/php ./phpunit --bootstrap vendor/autoload.php vendor/dvarner/ascendphp-core/src/Ascend/Test/CoreConfigTest.php

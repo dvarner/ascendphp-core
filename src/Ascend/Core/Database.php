@@ -1,251 +1,140 @@
 <?php namespace Ascend\Core;
 
+use Exception;
+use PDO;
+use PDOException;
+
 class Database
 {
-    protected static $pdo = null;
-    private static $log_queries = false;
+    protected ?PDO $pdo = null;
+    protected bool $sql_log_to_file = false;
 
-    public static function logQueries()
+    public function __construct()
     {
-        self::$log_queries = true;
-    }
-
-    public static function connect()
-    {
-        if (DB_LOG_QUERIES) self::logQueries();
-        $charset = 'utf8mb4';
-        $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . $charset;
-        $options = [
-            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
-            \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
-            \PDO::ATTR_EMULATE_PREPARES => false,
-        ];
-        try {
-            self::$pdo = new \PDO($dsn, DB_USER, DB_PASS, $options);
-        } catch (\PDOException $e) {
-            // @todo 20190729 Log this instead of throw error if fails in prod
-            throw new \PDOException($e->getMessage(), (int)$e->getCode());
+        if ('mysql' === Environment::get('DB_CONNECTION')) {
+            $this->instance();
         }
     }
 
-    public static function count($sql, $bind = [])
+    protected function instance()
     {
-        self::log($sql, $bind);
+        if (!$this->pdo instanceof PDO) {
+            $this->sql_log_to_file = Config::get('database.connections.mysql.sql_log_to_file');
+            $database_host = Config::get('database.connections.mysql.host');
+            $database_name = Config::get('database.connections.mysql.name');
+            $database_user = Config::get('database.connections.mysql.user');
+            $database_password = Config::get('database.connections.mysql.password');
+            $charset = Config::get('database.connections.mysql.charset');
+
+            $dsn = 'mysql:host=' . $database_host . ';dbname=' . $database_name . ';charset=' . $charset;
+            $options = [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+            ];
+
+            try {
+                $this->pdo = new PDO($dsn, $database_user, $database_password, $options);
+            } catch (PDOException $e) {
+                // todo 20190729 Log this instead of throw error if fails
+                throw new PDOException($e->getMessage(), (int)$e->getCode());
+            }
+        }
+    }
+
+    protected function log()
+    {
+        if ($this->sql_log_to_file) {
+//            $arg_list = func_get_args();
+//            $file = Config::get('path.storage.log') . 'sql.log';
+//            $datetime = Timezone::databaseDateFormat();
+//            $line = $datetime . TAB . $sql . $save_binds . RET;
+//            file_put_contents($file, , FILE_APPEND | LOCK_EX);
+        }
+    }
+
+    public function prepare($sql, $bind = [])
+    {
+//        $this->log($sql, $bind);
         $stmt = self::$pdo->prepare($sql);
         $stmt->execute($bind);
+        return $stmt;
+    }
+
+    public function count($sql, $bind = []): int
+    {
+        $stmt = $this->prepare($sql, $bind);
         return $stmt->rowCount();
     }
 
-    public static function query($sql)
+    public function getRow($sql, $bind = [])
     {
-        self::log($sql);
-        return self::$pdo->query($sql);
-    }
-
-    public static function one($sql, $bind = [])
-    {
-        self::log($sql, $bind);
-        $stmt = self::$pdo->prepare($sql);
-        $stmt->execute($bind);
+        $stmt = $this->prepare($sql, $bind);
         return $stmt->fetch();
     }
 
-    // $key = id field from the table will be the key of the array
-    //        , if you do this make sure there are no dups... it will override
-    public static function many($sql, $bind = [], $key = false)
+    public function getAll($sql, $bind = [])
     {
-        self::log($sql, $bind);
-        $stmt = self::$pdo->prepare($sql);
-        $stmt->execute($bind);
-        if ($key === false) {
-            return $stmt->fetchAll();
-        } else {
-            $result = [];
-            while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-                $result[$row[$key]] = $row;
-            }
-            return $result;
-        }
+        $stmt = $this->prepare($sql, $bind);
+        return $stmt->fetchAll();
     }
 
-    public static function insert($table, $bind)
+    /**
+     * @throws Exception
+     */
+    public function insert(string $table, array $binds)
     {
-        $fields = '';
-        $values = '';
-
-        // *** Build insert
-        foreach ($bind AS $name => $value) {
-            $fields .= ($fields == '' ? '' : ', ') . '`' . $name . '`';
-            $values .= ($values == '' ? '' : ', ') . ':' . $name;
-            unset($name, $value);
-        }
-
-        $tm = time();
-        $name = 'created_at';
-        $bind[$name] = date('Y-m-d H:i:s', $tm);
-        $fields .= ($fields == '' ? '' : ', ') . '`' . $name . '`';
-        $values .= ($values == '' ? '' : ', ') . ':' . $name;
-
-        $name = 'updated_at';
-        $bind[$name] = date('Y-m-d H:i:s', $tm);
-        $fields .= ($fields == '' ? '' : ', ') . '`' . $name . '`';
-        $values .= ($values == '' ? '' : ', ') . ':' . $name;
-
-        $sql = 'INSERT INTO ' . $table . ' (' . $fields . ') VALUES (' . $values . ')';
-        // echo $sql.'<br />';
-        // var_dump($bind);
-
-        try {
-            self::log($sql, $bind);
-            self::$pdo->prepare($sql)->execute($bind);
-            return (int)self::$pdo->lastInsertId();
-        } catch (\PDOException $e) {
-            // @todo 20190729 do more with this sql error
-            throw $e;
-            /*
-            $existingkey = "Integrity constraint violation: 1062 Duplicate entry";
-            if (strpos($e->getMessage(), $existingkey) !== FALSE) {
-
-                // Take some action if there is a key constraint violation, i.e. duplicate name
-            } else {
-                throw $e;
-            }
-            */
-        }
+//        if (count($binds) === 0) {
+//            throw new Exception('Binds empty for insert');
+//        }
+//
+//        $sql = 'INSERT INTO ' . $table . ' SET ';
+//        $sql_binds = [];
+//
+//        foreach ($binds as $field => $value) {
+//            $sql_binds[] = $field . ' = :' . $field;
+//        }
+//
+//        // todo 4/2/22 add this back in for created_at, updated_at, deleted_at if soft_delete set
+////        $tm = time();
+////        $name = 'created_at';
+////        $bind[$name] = TimeZone::dateFormatDB($tm);
+//
+//        $sql .= implode(',', $sql_binds);
+//
+//        try {
+//            $this->getRow($sql);
+//            return (int)self::$this->pdo->lastInsertId();
+//        } catch (PDOException $e) {
+//            // @todo 20190729 do more with this sql error
+//            dd($e);
+//        }
     }
 
-    public static function update($table, $bind, $where)
+    public function update()
     {
 
-        $sql = 'UPDATE ' . $table . ' SET ';
-        $sqlu = '';
-        foreach ($bind AS $name => $value) {
-            $sqlu .= ($sqlu == '' ? '' : ', ');
-            $sqlu .= $name . ' = :' . $name;
-            unset($name, $value);
-        }
-        $sqlu .= ' WHERE ';
-        $sqlw = '';
-        foreach ($where AS $name => $value) {
-            $sqlw .= ($sqlw == '' ? '' : ' AND ');
-            $sqlw .= $name . ' = :' . $name;
-            unset($name, $value);
-        }
-        $sqlu .= $sqlw;
-        $sql .= $sqlu;
-        $bind = array_merge($bind, $where);
-
-        try {
-            self::log($sql, $bind);
-            self::$pdo->prepare($sql)->execute($bind);
-        } catch (\PDOException $e) {
-            // @todo 20190729 do more with this sql error
-            throw $e;
-        }
     }
 
-    public static function restore($table, $where)
-    {
-        $sql = "UPDATE " . $table . " SET deleted_at = NULL WHERE ";
-        $sqlw = '';
-        foreach ($where AS $name => $value) {
-            $sqlw .= ($sqlw == '' ? '' : ' AND ');
-            $sqlw .= $name . ' = :' . $name;
-            unset($name, $value);
-        }
-        $sql .= $sqlw;
-
-        try {
-            self::log($sql, $where);
-            self::$pdo->prepare($sql)->execute($where);
-        } catch (\PDOException $e) {
-            throw $e;
-        }
-    }
-
-    public static function delete($table, $where)
+    public function restore()
     {
 
-        $deleted_at = date('Y-m-d H:i:s', time());
-        $sql = "UPDATE " . $table . " SET deleted_at = :deleted_at WHERE ";
-        $sqlw = '';
-        foreach ($where AS $name => $value) {
-            $sqlw .= ($sqlw == '' ? '' : ' AND ');
-            $sqlw .= $name . ' = :' . $name;
-            unset($name, $value);
-        }
-        $sql .= $sqlw;
-        $where['deleted_at'] = $deleted_at;
-
-        try {
-            self::log($sql, $where);
-            self::$pdo->prepare($sql)->execute($where);
-        } catch (\PDOException $e) {
-            throw $e;
-        }
     }
 
-    public static function deletePermanently($table, $where)
+    public function delete()
     {
-        $sql = 'DELETE FROM ' . $table . ' WHERE ';
-        $sqlw = '';
-        foreach ($where AS $name => $value) {
-            $sqlw .= ($sqlw == '' ? '' : ' AND ');
-            $sqlw .= $name . ' = :' . $name;
-            unset($name, $value);
-        }
-        $sql .= $sqlw;
 
-        if (count($where) > 0) {
-            try {
-                self::log($sql, $where);
-                self::$pdo->prepare($sql)->execute($where);
-            } catch (\PDOException $e) {
-                throw $e;
-            }
-        } else {
-            // @todo 20190724 Log this or do something different
-            die('Cant do this, deletePermanently() without a $where');
-        }
     }
 
-    public static function table_exists($table)
+    public function permanentDelete()
+    {
+
+    }
+
+    public function tableExists($table): bool
     {
         $sql = "SHOW TABLES LIKE '{$table}'";
-        self::log($sql, []);
-        $results = self::$pdo->query($sql);
-        return $results->rowCount() > 0 ? true : false;
-    }
-
-    public static function log($sql, $binds = [])
-    {
-        if (self::$log_queries) {
-            $save_binds = '';
-            if (is_array($binds) && count($binds) > 0) {
-                $save_binds = RET . 'BINDS: ' . TAB . json_encode($binds);
-            }
-            $file = PATH_LOG . 'sql.log';
-            $datetime = date('Y-m-d H:i:s');
-            file_put_contents($file, $datetime . TAB . $sql . $save_binds . RET, FILE_APPEND | LOCK_EX);
-
-            // Log queries which dont have deleted_at b/c we might need to add it to them
-            $pattern = '#^INSERT|UPDATE|DELETE#i';
-            preg_match($pattern, $sql, $matches);
-            if (isset($matches) && is_array($matches) && count($matches) == 0) {
-                $pattern = '#^SELECT.*WHERE.*deleted_at.*$#i';
-                preg_match($pattern, $sql, $matches);
-                if (isset($matches) && is_array($matches) && count($matches) == 0) {
-                    if (false === ($a = strpos($sql, ' id ='))) {
-                        $file = PATH_LOG . 'sql.no-deleted-at.log';
-                        $datetime = date('Y-m-d H:i:s');
-                        file_put_contents($file, $datetime . TAB . $sql . $save_binds . RET, FILE_APPEND | LOCK_EX);
-                    }
-                }
-            }
-        }
+        $count = $this->count($sql);
+        return (bool)$count;
     }
 }
-
-class DB extends Database {}
-
-DB::connect();

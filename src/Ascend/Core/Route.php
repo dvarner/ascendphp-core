@@ -2,157 +2,52 @@
 
 class Route
 {
-    public static function getURI()
+    private static array $uri_list;
+    private static bool $auth_on = false;
+    private static ?bool $auth_valid = null;
+
+    public static function getRouteList(): array
     {
-        $uri = $_SERVER['REQUEST_URI'];
-        if (false !== strpos($uri, '?')) {
-            $e = explode('?', $uri);
-            $uri = $e[0];
-        }
-        return $uri;
+        return self::$uri_list;
     }
 
-    public static function basicAuthHeader() {
-        if (BASIC_AUTH_HEADER) {
-            header('Cache-Control: no-cache, must-revalidate, max-age=0');
-            // echo '<pre>'; var_dump($_SERVER); exit;
-            $has_supplied_credentials = !(empty($_SERVER['PHP_AUTH_USER']) && empty($_SERVER['PHP_AUTH_PW']));
-            $is_not_authenticated = (
-                !$has_supplied_credentials ||
-                $_SERVER['PHP_AUTH_USER'] !== BASIC_AUTH_HEADER_USER ||
-                $_SERVER['PHP_AUTH_PW']   !== BASIC_AUTH_HEADER_PASS
-            );
-            if ($is_not_authenticated) {
-                header('HTTP/1.1 401 Authorization Required');
-                header('WWW-Authenticate: Basic realm="Access denied"');
-                // echo 'Access Denied!';
-                // unset($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']);
-                exit;
-            }
-        }
-    }
-
-    public static function view($uri, $class, $method, $module = null)
+    public static function get($uri, $class, $function)
     {
-        if (!is_null($module)) {
-            $module = '\\Ascend\\' . $module . '\\';
-        }
-        if (self::getRequestMethod() == 'GET') {
-            $class = $class . 'Controller';
-            if ($uri == self::getURI()) {
-                $class = $module . 'App\\Controller\\' . $class;
-                call_user_func(array($class, $method));
-                exit;
-            }
-            preg_match('@^' . $uri . '$@', self::getURI(), $matches);
-            if (isset($matches[1])) {
-                unset($matches[0]);
-                $class = $module . 'App\\Controller\\' . $class;
-                call_user_func(array($class, $method), $matches);
-                exit;
-            }
-        }
+        self::setUriList($uri, $class, $function, 'GET');
     }
 
-    public static function json($uri, $class, $method)
+    public static function post($uri, $class, $function)
     {
-        $class = $class . 'Controller';
-        if ($uri == self::getURI()) {
-            $class = 'App\\Controller\\' . $class;
-            $r = call_user_func(array($class, $method));
-            echo json_encode($r, true);
-            exit;
-        }
-        preg_match('@' . $uri . '@', self::getURI(), $matches);
-        if (isset($matches[1])) {
-            unset($matches[0]);
-            $class = 'App\\Controller\\' . $class;
-            $r = call_user_func(array($class, $method), $matches);
-            // header('Content-Type: application/json'); // @todo 200828 find out why we dont need this...
-            echo json_encode($r, true);
-            exit;
-        }
+        self::setUriList($uri, $class, $function, 'POST');
     }
 
-    public static function get($uri, $class, $method)
+    public static function put($uri, $class, $function)
     {
-        if (self::getRequestMethod() == 'GET') {
-            echo self::json($uri, $class, $method);
-        }
+        self::setUriList($uri, $class, $function, 'PUT');
     }
 
-    public static function post($uri, $class, $method)
+    public static function patch($uri, $class, $function)
     {
-        if (self::getRequestMethod() == 'POST') {
-            echo self::json($uri, $class, $method);
-        }
+        self::setUriList($uri, $class, $function, 'PATCH');
     }
 
-    public static function put($uri, $class, $method)
+    public static function delete($uri, $class, $function)
     {
-        if (self::getRequestMethod() == 'PUT') {
-            echo self::json($uri, $class, $method);
-        }
+        self::setUriList($uri, $class, $function, 'DELETE');
     }
 
-    public static function delete($uri, $class, $method)
+    public static function setUriList($uri, $class, $function, $method)
     {
-        if (self::getRequestMethod() == 'DELETE') {
-            echo self::json($uri, $class, $method);
-        }
+        self::$uri_list[$uri] = ['method' => $method, 'class' => $class, 'function' => $function, 'auth_on' => self::$auth_on, 'auth_valid' => self::$auth_valid];
     }
 
-    public static function rest($uri)
+    public static function auth($module, callable $anonymous_function)
     {
-        if ($uri == self::getURI()) {
-            echo '<h1>Under Construction</h1>';
-            $method = self::getRequestMethod();
-            $uri_requested = $_SERVER['REQUEST_URI'];
-            $uri_parse = parse_url($uri_requested);
-            parse_str($uri_parse['query'],$query_array);
-            echo '<pre>';
-            var_dump($uri_parse,$query_array);
-            exit;
-        }
-    }
-
-    public static function getRequestMethod()
-    {
-        // Below allows api access outside the website
-        // header("Access-Control-Allow-Orgin: *");
-        // header("Access-Control-Allow-Methods: *");
-
-        // <input type="hidden" name="_method" value="PUT">
-        $method = $_SERVER['REQUEST_METHOD'];
-        if ($method == 'POST' && array_key_exists('HTTP_X_HTTP_METHOD', $_SERVER)) {
-            if ($_SERVER['HTTP_X_HTTP_METHOD'] == 'DELETE') {
-                $method = 'DELETE';
-            } else if ($_SERVER['HTTP_X_HTTP_METHOD'] == 'PUT') {
-                $method = 'PUT';
-            } else {
-                throw new \Exception("Unexpected Header");
-            }
-        }
-        // if ($method != 'GET') { dd($method); }
-        return $method;
-    }
-
-    public static function getPutVariables() {
-        parse_str(file_get_contents("php://input"), $output);
-        return $output;
-    }
-
-    public static function display404($template_file = '_template.php', $tpl = [], $replace_variable = 'container')
-    {
-        header("HTTP/1.0 404 Not Found");
-        $html = '';
-        $html.= '<center>';
-        $html.= "<h1>404 Not Found</h1>";
-        $html.= "The page that you have requested could not be found.";
-        $html.= '</center>';
-        // @todo uncomment and make work if user wants
-        //$tpl['is_logged_in'] = User::isLoggedIn();
-        $tpl[$replace_variable] = $html;
-        echo View::html($template_file, $tpl);
+        self::$auth_on = true;
+        $module_path = Module::getControllerPath($module, $module);
+        self::$auth_valid = (file_exists($module_path) ? include_once $module_path : false);
+        $anonymous_function();
+        self::$auth_valid = null;
+        self::$auth_on = false;
     }
 }
